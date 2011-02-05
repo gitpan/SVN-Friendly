@@ -1,0 +1,103 @@
+=head1 NAME
+
+SVN::Friendly::Dates - convert subversion times to Perl time
+
+=head1 SYNOPSIS
+
+  # ---------------------------------------------------------------
+  # $iAprTime    Apache runtime timestamp, number of microseconds
+  #              since 00:00:00 UTC, January 1, 1970
+  #
+  # $iPrecision  may be any one of the following constants
+  #              SVN::Friendly::Dates->DAY
+  #              SVN::Friendly::Dates->MINUTE
+  #              SVN::Friendly::Dates->SECOND
+  #              SVN::Friendly::Dates->USEC
+  #
+  # $sISOTime     ISO 8601 formatted timestamp provided by subversion
+  #              (some functions provide the string rather than
+  #               microseconds since epoch time).
+  # ---------------------------------------------------------------
+
+  use SVN::Friendly::Dates /.*/;  #import all
+
+
+  # --------------------------------------------------
+  # decompresses ISO time, replaces Z with UTC, e.g.
+  #
+  # 1970-01-01T00:00:00.000000
+  #   DAY    => 1970-01-01
+  #   MINUTE => 1970-01-01 00:00 UTC
+  #   SECOND => 1970-01-01 00:00:00 UTC
+  #   USEC   => 1970-01-01 00:00:00.000000 UTC
+  # --------------------------------------------------
+
+  $sTimestamp    = getTimestampFromISO8601($sISOTime, $iPrecision);
+
+  $sTimestamp    = getTimestamp($iAprTime, $iPrecision);
+
+  # --------------------------------------------------
+  # local/utc seconds since the epoch in various units
+  # --------------------------------------------------
+
+  $iSeconds      = getUtcPerlTime($iAprTime);
+
+  $iNanoseconds  = getUtcNanoTime($iAprTime);
+
+  $iSeconds      = getLocalPerlTime($iAprTime);
+
+  $iMicroseconds = getLocalUsecTime($iAprTime);
+
+  $iNanoseconds  = getLocalNanoTime($iAprTime);
+
+
+=head1 DESCRIPTION
+
+This class defines tools for converting the timestamps used by
+subversion into Perl time.  Subversion uses the apache runtime
+library and its timestamps have a different unit (microseconds)
+than Perl time which is calculated in non-leap seconds
+past 00:00:00 UTC, January 1, 1970.
+
+=head1 VERSION COMPATIBILITY
+
+See L<SVN::Friendly|SVN::Friendly>.
+
+=head1 CAVEATS
+
+None to date.
+
+=head1 KNOWN BUGS
+
+None to date.
+
+=head1 TO DO/ROADMAP
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.

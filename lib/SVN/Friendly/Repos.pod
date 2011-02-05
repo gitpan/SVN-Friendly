@@ -1,0 +1,271 @@
+=head1 NAME
+
+SVN::Friendly::Repos - user friendly Subversion API for the
+  repository management
+
+=head1 SYNOPSIS
+
+  use SVN::Friendly::Repos;
+
+  #--------------------------------------------------
+  # Create a repository
+  #--------------------------------------------------
+
+  $oRepos = create($sRootPath, $xConfig, $xConfigFs, $oUuid);
+
+  #--------------------------------------------------
+  # Get access to an existing repository
+  #--------------------------------------------------
+
+  $oRepos = SVN::Friendly::Repos->new($sRootPath);
+
+  #--------------------------------------------------
+  # About the repository
+  #--------------------------------------------------
+  #
+  # $iHook    - may be any of the following constants
+  #
+  #             $oRepos->PRE_COMMIT
+  #             $oRepos->START_COMMIT
+  #             $oRepos->PRE_REVPROP
+  #             $oRepos->POST_REVPROP
+  #             $oRepos->PRE_OBLITERATE
+  #             $oRepos->POST_OBLITERATE
+  #             $oRepos->PRE_LOCK
+  #             $oRepos->POST_LOCK
+  #             $oRepos->PRE_UNLOCK
+  #             $oRepos->POST_UNLOCK
+  #
+  # $iAprTime   microseconds since the epoch (Jan 1,1970,00:00:00 UTC)
+
+
+
+  $oRepos->getUUID();
+
+  $oRepos->getRoot();
+
+  $oRepos->getFormat();
+
+  $oRepos->getFileSystemType();
+
+  $oRepos->getHead();
+
+  $oRepos->getYoungestRevision($iAprTime);
+
+
+
+  $oRepos->getHookDir();
+
+  $oRepos->getHookFile($iHook);
+
+  $oRepos->getDbDir();
+
+  $oRepos->getLockDir();
+
+  $oRepos->getDbLogLockFile();
+
+  $oRepos->getConfDir();
+
+  $oRepos->getSvnserverConfFile();
+
+  #--------------------------------------------------
+  # Configuration management
+  #--------------------------------------------------
+
+  $oRepos->setUUID($sUUID);
+  $oRepos->setUUID($sUUID, $oPool);
+
+  $oRepos->enableRevProps();
+  $oRepos->enableRevProps($sScript);
+
+
+  #--------------------------------------------------
+  # Get the svn_repos_t object
+  #--------------------------------------------------
+
+  $oSvnRepos = $oRepos->getSvnRepos();
+
+=head1 DESCRIPTION
+
+The class provides user friendly access to API routines needed
+for configuring and retrieving information from the repository.
+
+=head2 What is a repository?
+
+A subversion repository stores the canonical or "official" copies
+of a  set of documents as well as all the steps needed to
+reconstruct past official versions.
+
+This cannonical set can be replicated on multiple machines or
+locations provided that all copies share the same UUID. The
+repository can also be moved.  Working copies that checked out
+documents from the old location will still be able to access the
+new location provided the old and new locations have the same UUID.
+
+The repository can be viewed as a composite of several different
+subsystems:
+
+* a filesystem or database that stores the documents and all of
+  their history.  You can choose the particular implementation
+  you want for the filesystem.
+
+* an authorization system for determining who may make changes or
+  extract data from the repository.
+
+* a runtime system that monitors activity and injects custom
+  functionality via hook scripts.
+
+* a server management system that determines what protocols may
+  be used to access the repository and configures them.
+
+=head2 Methods not yet defined for this object
+
+At present there is only a skeletal implementation of the class.
+If you need to use additional methods, for now, you will have to
+explore the unadorned Subversion SWIG bindings.  You will also
+need to pass those methods a C<svn_repos_t> object.  This can
+be retrieved via the C<getSvnRpos()> method.
+
+For a list of C-API functions, see
+http://svn.collab.net/svn-doxygen/svn__repos_8h.html
+
+The usual rules for converting the C-API to Perl bindings apply:
+
+* callback + baton parameters are collapsed into a single callback
+  parameter
+
+* "OUT" parameters are returned as return values. if there are
+  multiple such parameters the Perl function will return a list.
+  The list members will be in the same order as the return values.
+
+* the trailing pool parameter is optional. All other parameters
+  must at least be represented by an actual parameter. Some methods
+  allow C<undef> as a parameter; others require that an actual
+  value be provided.
+
+For further discussion see
+L<SVN::Friendly::Client|SVN::Friendly::Client>.
+
+=head1 USAGE
+
+=head2 Creating a repository from scratch
+
+  # $sRootPath  - local file system path to the root of the
+  #               repository
+  #
+  # $xConfig    - a SVN::Friendly::Config object, or a hash
+  #               or directory path name suitable for creating
+  #               one - see SVN::Friendly::Config
+  #
+  # $xConfigFs  - hash storing option-value pairs describing
+  #               the type of file system that will be used
+  #               to build the repository.  Keys are option
+  #               names, values are option values. See below
+  #               See below for details.
+  #
+  # $oUuid      - the respositories Uuid. This should be left
+  #               undefined except when creating a repository
+  #               that is meant to be a mirror of an existing
+  #               repository.
+
+  $oRepos = create($sRootPath, $xConfig, $xConfigFs, $oUuid);
+
+
+=head2 Opening an existing repository
+
+  $oRepos = SVN::Friendly::Repos->new($sRootPath);
+  $oRepos = SVN::Friendly::Repos->new($oSvnRepos);
+  $oRepos = SVN::Friendly::Repos->new($oRepos);
+
+
+The C<new> will reopen an existing repository or create an object
+wrapper around an already opened respository. You can pass it
+the local root of the reposiory, a C<SVN::Friendly::Repos> object
+or a C<svn_repos_t> object and it will "do the right thing". If
+a wrapper has already been created, it will use that, otherwise it
+will create a fresh one.
+
+(Note: the list of already crated wrappers is stored using weak
+references so there is no need to worry that repository objects
+will stay live in memory forever.).
+
+=head2 Configuration management
+
+There is a great deal that can be done to expand this classes
+capabilities for programmatic repository management. At present
+there are just two methods:
+
+  $oRepos->setUUID($sUUID);
+  $oRepos->setUUID($sUUID, $oPool);
+
+  $oRepos->enableRevProps();
+  $oRepos->enableRevProps($sScript);
+
+=over
+
+=item setUUID
+
+Sets the repository UUID after it has been created.  This method
+should be used with extreme care, and only on a repository that
+is a meant to be a mirror or backup for the original repository
+assigned to C<$sUUID>.
+
+Additionally, if there is any chance that there are outstanding
+working copies, the owners of those working copies should commit
+all changes. Once a UUID has changed on a repository, any working
+copies checked out with the old UUID will no longer be able to
+post to that repository. They will only be able to post to
+repositories that have the old UUID.
+
+=item enableRevProps
+
+Revision properties cannot be edited unless the repository has
+installed a C<PRE_REVPROP> hook script that exits with 0.  If
+called without parameters, this method installs a skeletal version
+of such a script.  If called with the C<$sScript> it installs
+the content of C<$sScript> in the revision property hook file.
+
+=back
+
+=head1 VERSION COMPATIBILITY
+
+See L<SVN::Friendly|SVN::Friendly>.
+
+=head1 CAVEATS
+
+None to date.
+
+=head1 KNOWN BUGS
+
+None to date.
+
+=head1 TO DO/ROADMAP
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.

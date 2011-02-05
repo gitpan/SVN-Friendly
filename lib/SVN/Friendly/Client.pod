@@ -1,0 +1,3577 @@
+=head1 NAME
+
+SVN::Friendly::Client - user friendly front end to Subversion client sub-system API
+
+=head1 SYNOPSIS
+
+The methods below cover the functionality shared by all
+releases of subversion beginning with subversion 1.1. For additional
+methods exposing features available only in later releases of
+subversion see L</USAGE>.
+
+  # Note: The methods below are presented with minimal and maximal
+  # parameters. Trailing parameters used by the maximal parameter
+  # version may be omitted.
+
+  use SVN::Friendly::Client;
+
+  # -------------------------------------------------------------
+  # String representation of constants and objects
+  # -------------------------------------------------------------
+  # may be called as class or object methods
+
+  $sAction   = SVN::Friendly::Client->getActionAsString($iAction);
+  $sStatus   = SVN::Friendly::Client->getStatusAsString($iStatus);
+  $sState    = SVN::Friendly::Client->getStateAsString($iState);
+  $sKind     = SVN::Friendly::Client->getKindAsString($iKind);
+  $sOp       = SVN::Friendly::Client->getScheduledOpAsString($iOp);
+
+  $sDirEntry = SVN::Friendly::Client->getDirEntryString($oDirEntry
+                  , $iDatePrecision);
+
+
+  $sAction   = $oClient->getActionAsString($iAction);
+  $sStatus   = $oClient->getStatusAsString($iStatus);
+  $sState    = $oClient->getStateAsString($iState);
+  $sKind     = $oClient->getKindAsString($iKind);
+  $sOp       = $oClient->getScheduledOpAsString($iOp);
+
+  $sDirEntry = $oClient->getDirEntryString($oDirEntry
+                  , $iDatePrecision);
+
+  # -------------------------------------------------------------
+  # Create/configure a client context object
+  # -------------------------------------------------------------
+
+  $oClient = SVN::Friendly::Client->new();
+  $oClient = SVN::Friendly::Client->new($xAuth, $xConfig, $xNotify
+     , $crLogMsg, $crCancel, $oPool);
+
+
+  $oConfig  = $oClient->getConfig();  # SVN::Friendly::Config object
+  $oPool    = $oClient->getPool();
+
+  $crLogMsg = $oClient->getLogMessageCallback();
+  $crCancel = $oClient->getCancellationCallback();
+  $crNotify = $oClient->getNotificationCallback();
+
+  $oClient->configureAuthentication($xAuth);
+  $oClient->setConfig($xConfig);
+  $oClient->configureNotification($xNotify);
+  $oClient->configureLogMsg($crLogMsg);
+  $oClient->configureCancellation($crCancel);
+  $oClient->setPool($oPool);
+
+  # -------------------------------------------------------------
+  # Synchronize working copy and repository
+  # -------------------------------------------------------------
+
+  my $sUUID  = $oClient->getRepositoryUUID($sWc, $oPool);
+  my $sRoot  = $oClient->getRepositoryRootURL($sWc, $oPool);
+
+  $iRev = $oClient->checkout($xRepos, $xPeg, $sWc);
+  $iRev = $oClient->checkout($xRepos, $xPeg, $sWc, $bRecurse, $oPool);
+
+  $oClient->status($sWc);
+  $oClient->status($sWc, $crVisit, $bRecurse, $bUpdate, $xPeg
+     , $bAll, $bNoIgnore, $oPool);
+
+  $iRev = $oClient->update($sWc);
+  $iRev = $oClient->update($sWc, $xPeg, $bRecurse, $oPool);
+
+  $oClient->resolved($sWc);
+  $oClient->resolved($sWc, $bRecurse, $oPool);
+
+  $oCommitInfo = $oClient->commit($xWcPaths);
+  $oCommitInfo = $oClient->commit($xWcPaths, $sComment, $bRecurse);
+
+  $oClient->cleanup($sWc);
+  $oClient->cleanup($sWc, $oPool);
+
+  $oClient->lock($xWcPaths);
+  $oClient->lock($xWcPaths, $sComment, $bStealLock, $oPool);
+
+  $oClient->unlock($xPaths);
+  $oClient->unlock($xPaths, $bBreakLock, $oPool);
+
+  $oClient->switch($sWc, $xRepos);
+  $oClient->switch($sWc, $xRepos, $xPeg, $bRecurse, $oPool);
+
+  $oClient->relocate($sWc, $xFromRepos, $xToRepos);
+  $oClient->relocate($sWc, $xFromRepos, $xToRepos, $oPool);
+
+  # -------------------------------------------------------------
+  # Creating, deleting and removing versioned data
+  # -------------------------------------------------------------
+
+  $oClient->mkdir($xPaths);
+  $oClient->mkdir($xPaths, $sComment, $oPool);
+
+  $oClient->add($sWc);
+  $oClient->add($sWc, $bRecurse, $oPool);
+
+  $oClient->delete($xPaths);
+  $oClient->delete($xPaths, $sComment, $bSkipModified, $oPool);
+
+  $oClient->copy($xFrom, $xPeg, $xTo);
+  $oClient->copy($xFrom, $xPeg, $xTo, $sComment, $oPool);
+
+  $oClient->move($xFrom, $xTo);
+  $oClient->move($xFrom, $xTo, $bSkipModified, $oPool);
+
+  $oClient->propset($xPath, $sProp, $sValue);
+  $oClient->propset($xPath, $sProp, $sValue, $bRecurse, $oPool);
+
+  $oClient->propdel($xPath, $sProp);
+  $oClient->propdel($xPath, $sProp, $bRecurse, $oPool);
+
+  $oClient->revert($sWc);
+  $oClient->revert($sWc, $bRecurse, $oPool);
+
+  # -------------------------------------------------------------
+  # Comparing and merging revisions
+  # -------------------------------------------------------------
+
+  $oClient->diff($xPath1, $xPeg1, $xPath2);
+  $oClient->diff($xPath1, $xPeg1, $xPath2, $xPeg2, $bRecurse
+     , $aCmdLineOptions, $bIgnoreAncestry, $bIgnoreDeleted
+     , $xOutFile, $xErrFile, $oPool);
+
+  $oClient->merge($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc);
+  $oClient->merge($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+     , $bRecurse, $bDryRun, $bIgnoreAncestry, $bForceDelete, $oPool);
+
+  # -------------------------------------------------------------
+  # Revision metadata
+  # -------------------------------------------------------------
+
+  my $sValue = $oClient->getRevisionProperty($xRepos, $sProp);
+  my $sValue = $oClient->getRevisionProperty($xRepos, $sProp, $xPeg);
+
+  my $hProps = $oClient->getRevisionProperties($xRepos);
+  my $hProps = $oClient->getRevisionProperties($xRepos, $xPeg);
+
+
+  $iSetInRev = $oClient->revprop_set($xRepos, $sProp, $xPeg, $sValue);
+  $iSetInRev = $oClient->revprop_set($xRepos, $sProp, $xPeg, $sValue
+     , $bSkipChecks, $oPool);
+
+  $iSetInRev = $oClient->revprop_delete($xRepos, $sProp);
+  $iSetInRev = $oClient->revprop_delete($xRepos, $sProp, $xPeg
+     , $bSkipChecks, $oPool);
+
+  # -------------------------------------------------------------
+  # Repository side directory listings
+  # -------------------------------------------------------------
+
+  $aRelPaths = $oClient->getPathList($xPath);
+  $aRelPaths = $oClient->getPathList($xPath, $xPeg, $bRecurse,$oPool);
+
+  $oClient->list($xPath, $crVisit);
+  $oClient->list($xPath, $xPeg, $crVisit, $bRecurse, $oPool);
+
+  #------------------------------------------------------
+  # Detailed information for individual files and directories
+  #------------------------------------------------------
+
+  my $oInfo   = $oClient->getInfo($sPath);
+  my $oInfo   = $oClient->getInfo($sPath, $xPeg, $oPool);
+
+  my $sValue  = $oClient->getPathProperty($sPath, $sProp);
+  my $sValue  = $oClient->getPathProperty($sPath, $sProp, $xPeg);
+
+  my $hProps  = $oClient->getPathProperties($sPath);
+  my $hProps  = $oClient->getPathProperties($sPath, $xPeg);
+
+  my $sRepos  = $oClient->getRepositoryURL($sWc);
+  my $sRepos  = $oClient->getRepositoryURL($sWc, $oPool);
+
+  my $bLocked = $oClient->isLocked($sWc);
+  my $bLocked = $oClient->isLocked($sWc, $oPool);
+
+  $oClient->cat($xRepos, $fhOut);
+  $oClient->cat($xRepos, $xPeg, $fhOut, $oPool);
+
+  $oClient->blame($xRepos, $crVisit);
+  $oClient->blame($xRepos, $xStart, $xEnd, $crVisit, $oPool);
+
+  $oClient->info($xPath, $crVisit);
+  $oClient->info($xPath, $xPeg, $xRev, $crVisit, $bRecurse, $oPool);
+
+  $oClient->log($xPaths, $crVisit);
+  $oClient->log($xPaths, $xStart, $xEnd, $crVisit, $bChangedPaths
+     , $bStrictNodeHistory, $oPool);
+
+  # -------------------------------------------------------------
+  # Importing and exporting
+  # -------------------------------------------------------------
+
+  $oCommitInfo = $oClient->import($sLocal, $xRepos);
+  $oCommitInfo = $oClient->import($sLocal, $xRepos, $sComment
+     , $bRecurse,$oPool);
+
+  $oClient->export($xRepos, $xPeg, $sLocal);
+  $oClient->export($xRepos, $xPeg, $sLocal, $bOverwrite, $oPool);
+
+
+
+=head1 DESCRIPTION
+
+This class provides a user friendly front end to the Subversion
+bindings so you can develop subversion related applications
+without relying on the command line.  It provides a more
+user friendly alternative to the raw API exposed by
+L<SVN::Alien|SVN::Alien> and nearly raw API exposed by
+L<SVN::Client|SVN::Client>.  It provides full access to the
+functions of the raw API but does so in a way that integrates
+naturally with Perl programming styles.
+
+As of Feb, 2011 the SVN modules available on CPAN provide only
+limited support for a user friendly CPAN interface. There is no
+module or distribution that provides a comprehensive interface
+that could be used as an alternative to L<SVN::Client|SVN::Client>.
+
+Some of the features that make this class a more friendly version of
+the Subversion API:
+
+=over
+
+=item encapsulating domain knowledge
+
+This manual page and the implementation of many of the functions
+(especially the choice of defaults) encapsulate knowledge about
+the subversion programmable API that can only be gained from
+experimentation with each methods coupled with careful reading
+and re-reading of the C-API documentation, L<Alien::SVN>
+documentation and even occasional dives into source code and
+SWIG bindings definition files.
+
+=item parameter defaults and optional trailing parameters.
+
+All methods have been defined so that trailing optional parameters
+can be omitted and intermediate undefined parameter have reasonable
+defaults (usually set to the same defaults as the command line
+client tool).
+
+This is especially important to user friendliness because many of
+the subversion API functions have very long parameter lists
+and do not accept C<undef> as a parameter.  In the raw API presented
+by L<SVN::Client|SVN::Client>, you have to provide values for every
+single parameter (except C<$oPool>  or you are liable to get error
+messages. To add to the burden, many parameters will not take
+undef as a parameter, so you also need to come up with your own
+default values, which may take some research as mentioned in the
+previous point. This work is done for you if you use
+L<SVN::Friendly::Client|SVN::Friendly::Client>.
+
+Thus to get the status of all the files in your working copy
+you make a call like this:
+
+  $oClient->status($sWc);
+
+rather than an ugly call like these which requires every single
+parameter every single time you call it or else the underlying
+C function complains about too few parameters.
+
+  $oContext->status($sWc, $xPeg, $crVisit, $bRecurse, $bAll
+     , $bUpdate, $bNoIgnore);
+
+
+=item provide log comments via method parameters
+
+None of the C-API methods have a parameter where you can set the
+log message during a commit. Nor is there an easy alternative for
+identicating the log message.  In the C-API log messages are
+handled by callback method that is defined for the client as a
+whole and not for individual method calls.
+
+This class simplifies log comments by providing a log message
+parameter to any method with a standardize parameter order that
+is liable to commit data to the repository.
+
+=item consistent easy-to-remember parameter ordering
+
+A standard ordering of parameters is very important to making this
+API usable because there are many, many methods and parameter lists
+can be very long and hard to remember.  The C-API more or less
+follows a standard order but there are just enough exceptions to
+make mistakes easy.
+
+There are costs to regularizing the parameter ordering because
+preserving the C-API ordering makes looking up documentation in the
+C-API fairly straightfoward.  As a compromise, this class provides
+two sets of methods:
+
+* methods ending in a major-minor version number strictly follow the
+  C-API parameter ordering.
+
+* all other methods follow an easy to remember standardized
+  parameter ordering discussed in L</Order of parameters>.
+
+=item consistant naming of methods belonging to later APIs
+
+The C<SVN::Friendly::Client|SVN::Friendly::Client> also standardizes
+the naming of methods belonging to each API version. This makes it
+much easier to choose methods targeted at a specific minimum
+release of subversion or to detect a minimum release number in
+legacy code.
+
+For instance, if your application targets the Subversion 1.5 API,
+then you can use any method ending in 1_5, as well as methods
+ending in 1_4, 1_1, and any methods without a major_minor suffix.
+
+
+In the raw C-API (and in C<SVN::Alien|SVN::Alien>), the naming
+is not so easy.  Enhanced versions of functions simply get
+sequential numbers.  As a result the trailing number on an API
+function often lags behind the subversion release where it first
+appears.  For example, C<svn_client_blame5> first appears in
+the 1.7 subversion release, as does C<svn_client_propset3>. To
+know what functions are compatible with a particular release of
+subversion, you always have to look at the documentation. You
+can't just look at the name.
+
+=item string representation of Subversion constants
+
+To make it easy to debug and print out reports on the repository,
+stringified versions are provided for all enums and constants
+used in parameters passed to callback routines or return values.
+These strings can be retrieved by calling the various
+C<getXxxAsString> methods.
+
+In the raw C-API all you have are the numbers themselves and you
+must look up the meaning of the numbers and convert them to
+human readable strings on your own.
+
+=item simplified access to repository and working copy metadata
+
+L<SVN::Friendly::Client|SVN::Friendly::Client> provides several C<getXXX>
+methods to access commonly needed informtion about repositories,
+working copies, and the paths within them.
+
+These methods typically begin with either "is" or "get".
+
+This information is sometimes difficult to get at witht the
+raw API because many of the C-API functions use the visitor model
+to access repository and working copy metadata. To get a single
+value for a single path one needs to (a) define a variable
+(b) write a closure that sets that variable (b) pass it as a
+callback to the method of interest (e.g. C<info>, C<status>, C<log>),
+and (d) return the value after the method completes
+
+=item automatic parameter type conversions
+
+L<SVN:Friendly::Client> expands the types that can be used as
+parameters with API methods:
+
+* any parameter that can take a reference to a list of paths can
+  also take a simple string. The string will be auto wrapped in an
+  array reference.
+
+* any object that stringifies into a file system path or URL can
+  be used as a parameter.  Thus one can use a C<URI> object, a
+  L<Path::Class> object or any object you write that overloads
+  C<""> (see C<overload> in the Perl documentation).
+
+In the raw API, your parameters must exactly match the declared
+parameter type: only scalars can be passed as scalar parameters,
+only arrays can be passed as array parameters. The parameters
+are usually passed directly to the C API so there is no opportunity
+for natural usage to autoconvert an object to a string.
+
+=item simplified configuration of the authentication process
+
+The authentication process can be configured with a simple hash
+and brief keywords. See L</Authentication> for details.
+
+Without C<SVN::Friendly::Client> you must manually construct an array
+of authentication service provider objects. You can still configure
+authentication that way using
+C<SVN::Friendly::Client|SVN::Friendly::Client>
+but in most cases that shouldn't be necessary.
+
+=item simplified configuration of notifications
+
+L<SVN::Friendly::Client> gives you two options for configuring
+Notifications: you can install a callback routine
+or provide a hash that L<SVN::Friendly::Client> will convert into
+a callback routine.
+
+The hash is meant for situations where you want your notification
+action to depend on the event.  Each key of the hash identifies
+an event or group of events and stores a callback associated with
+that event.  See L</Notification> for
+details.
+
+If you were to use only the tools provided by the raw subversion
+Perl bindings, you would have no choice but to define the callback
+and switch statement in lieu of the hash.
+
+=item subclassable interface
+
+C<SVN::Friendly::Client> may be subclassed. It will do the right thing
+and call methods on the parent interface with parameters in the
+correct locations.
+
+Due to the way L<SVN::Client|SVN::Client> presently (1.6.12 and
+earlier)automates the conversion of the raw C-API to object methods,
+L<SVN::Client|SVN::Client> cannot be subclassed.  Even though the
+methods are inherited, parameters will not be passed in the correct
+order to the C-API.
+
+=back
+
+=head1 USAGE
+
+=head2 Using/Requiring/Importing
+
+There are no exportable methods. To use the methods defined for
+this class and its objects, simply place the following line at the
+top of your code module, along with your other use statements:
+
+  use strict;
+  use warnings;
+  use Foobar;
+  use SVN::Friendly::Client;   # <== this module
+
+
+=head2 String representation of constants and objects
+
+Subversion has quite a number of enumerated constants. These
+can be hard to interpret during debugging, so C<SVN::Friendly::Client>
+has provided methods that convert these constants into human
+readable strings:
+
+  # convert notification actions (SVN::Wc::Notify::Action) to strings
+
+  $sAction = SVN::Friendly::Client->getActionAsString($iAction);
+  $sAction = $oClient->getActionAsString($iAction);
+
+
+  # convert status codes (SVN::Wc::Status) to strings
+
+  $sStatus = SVN::Friendly::Client->getStatusAsString($iStatus);
+  $sStatus = $oClient->getStatusAsString($iStatus);
+
+
+  # convert SVN::Wc::Notify::State constants to strings
+
+  $sState = SVN::Friendly::Client->getStateAsString($iState);
+  $sState = $oClient->getStateAsString($iState);
+
+
+  # convert SVN::Node constants to strings
+
+  $sKind = SVN::Friendly::Client->getKindAsString($iKind);
+  $sKind = $oClient->getKindAsString($iKind);
+
+
+  # convert SVN::Wc::Schedule constants to strings
+
+  $sOp = SVN::Friendly::Client->getScheduledOpAsString($iOp);
+  $sOp = $oClient->getScheduledOpAsString($iOp);
+
+
+  # convert a svn_dirent_t object to a string
+  # see SVN::Friendly::Dates for values of $iDatePrecisin
+
+  $sDirEntry = SVN::Friendly::Client->getDirEntryString($oDirEntry
+                  , $iDatePrecision);
+  $sDirEntry = $oClient->getDirEntryString($oDirEntry
+                  , $iDatePrecision);
+
+=head2 Creating and configuring a client object
+
+Subversion client objects store data needed to configure and run
+a subversion client context. 
+
+Each context optionally includes:
+
+* C<$xAuth> an authorization baton storing username, password, and
+  other information needed to log into a repository and the server
+  hosting it.  See below for details about how to create a baton.
+
+* C<$xConfig> configuration data. You can provide either
+  the fully qualified path name of a configuration file or a hash
+  storing an in-memory configuration. See below for details.
+
+* C<$xNotify> a notification function or a hash that will be
+  converted into one. This function is called to verbosely narrate
+  or to perform special follow-up or logging for operations on the
+  working copy and repository. See below for details.
+
+* C<$crLogMsg> a log message generator code reference. This function
+  is called whenever subversion needs to commit a change to the
+  repository. It can fill in the message by a variety of means
+  depending on your subversion application:  launching an interactive
+  process, polling a global variable for instance. See below for
+  details.
+
+* C<$crCancel> a cancel code reference. This function is responsible
+  for graceful handling of user aborts and other reasons for forced
+  termination of a subversion operation.  It is called at various
+  logical stopping points during a subversion operation. The function
+  canvases its environment for some sort of cancellation request
+  and operates on it. See below for details.
+
+* C<$oPool> a memory pool used by the client context operations. See
+  the next section on common parameters for further discussion.
+
+
+The client context does not include a path to a particular working
+copy or repository. This is because the client context object defines
+I<how> operations will be carried out for I<any> desired combination
+of working copy and repository.
+
+Also note that "context" refers to the collection of properties used
+to create the conntection to the remote repository, not to an actual
+networking session. Depending on the location of the repository and
+the communication protocol used to connect to the repository, there
+may be one, two, or many remote connections started and terminated
+during the life of a client context.
+
+The properties of a client context can be set at creation or after
+the fact via setter methods:
+
+  $oClient = SVN::Friendly::Client->new();
+  $oClient = SVN::Friendly::Client->new
+     ($xAuth, $xConfig, $xNotify, $crLogMsg, $crCancel);
+  $oClient = SVN::Friendly::Client->new
+     ($xAuth, $xConfig, $xNotify, $crLogMsg, $crCancel);
+
+  $xConfig  = $oClient->getConfig();
+  $oPool    = $oClient->getPool();
+
+  $crLogMsg = $oClient->getLogMessageCallback();
+  $crCancel = $oClient->getCancellationCallback();
+  $crNotify = $oClient->getNotificationCallback();
+
+  $oClient->configureAuthentication($xAuth);
+  $oClient->setConfig($xConfig);
+  $oClient->configureNotification($xNotify);
+  $oClient->configureLogMsg($crLogMsg);
+  $oClient->configureCancellation($crCancel);
+  $oClient->setPool($oPool);
+
+
+=head3 Authentication
+
+A version control system isn't much use unless you have access to
+a repository. Therefore part of the work of the client context is
+to request, search for, and store any data needed to log into
+or gain access to a repository.
+
+By default, a context uses one of five authentication strategies
+in order. If it cannot gain access with one strategy, it will try
+the next. Also by default, this authentication process is silent.
+It gets the information for each of these strategies from
+(a) configuration files (b) data cached during a prior attempt
+to access that repository.  The strategies in order are:
+
+=over
+
+=item *
+
+username only
+
+=item *
+
+username + password (this is called "simple" in the C-API)
+
+=item *
+
+SSL server side - the server is looked up in a file of trusted
+  servers.
+
+=item *
+
+SSL client side - the client identifies itself with an SSL
+certificate.
+
+=item *
+
+SSL client side + password - in addition to the SSL  certificate
+the client side must provide a password.
+
+=back
+
+You can customize the process by passing any of the following
+objects to the client context constructor or to its
+C<configureAuthentication> method;
+
+=over
+
+=item *
+
+a configuration hash
+
+=item *
+
+an array of hand crafted provider objects
+
+=item *
+
+an authentication baton
+
+=back
+
+=head4 Customizing authentication with a hash
+
+The easiest way to customize authentication is to use a configuration
+hash.  The C<providers> key of the hash can be used to decide
+which providers you will use and in what order.  You can set general
+properties for the providers using the C<pool> and C<retries> keys.
+The remaining keys (C<username>, C<username_pw>, C<ssl_server>, etc)
+are used to configure specific providers.
+
+Each provider key is configured with a two element array reference:
+
+  [0]  a code reference that will prompt the user or use some other
+       means for retrieving the username. This will be called if
+       silent authentication fails.
+
+  [1]  no-silent flag. If true, all requests for authentication
+       information will be sent to the prompt callback.
+
+Alternatively, as a shortcut, you can provide the key a code
+reference. The code reference will be auto-converted into
+C<[$coderef,undef]>.
+
+
+The keys in more detail follow:
+
+=over
+
+=item providers
+
+This may be set to any of the following constants, or else to
+an array of these constants. Each constant identifies a strategy
+to use.  If the value is a single constant, then it indicates
+the first strategy to use in the list above. Earlier strategies
+will be skipped.  If the value is an array, it indicates the
+order in which strategies should be used. Any strategy omitted from
+the list will be ignored.
+
+* C<USERNAME> - use username only to authenticate
+
+* C<USRNAME_PW> - use username + password to authenticate
+
+* C<SSL_SERVER> - authenticate based on a server-side SSL certificate
+
+* C<SSL_CLIENT> - self identify with a client-side SSL certificate
+
+* C<SSL_CLIENT_PW> - in addition to self identifying with a client
+  side certificate, provide a password.
+
+If this key is missing all providers will be used in their default
+order.
+
+=item pool
+
+Identifies the memory pool to be used by the authentication process.
+Each provider will be created to use this pool. Unless you have
+very specific memory management needs, you won't normally need to
+set the key.  See L</Memory Pools> below for further discussion.
+
+=item retries
+
+The number of times a user is allowed to retry when prompted for
+authentication information. If unset, defaults to 3. To allow
+unlimited retries, set this to a negative number.
+This key will be ignored if all of the providers are configured
+to gather authentication data silently.
+
+=item username
+
+Details for configuring the username authentication process.
+
+=item username_pw
+
+Details for configuration the username + password authentication
+process.
+
+=item ssl_server
+
+Details for configuration the ssl server authentication
+process.
+
+=item ssl_client
+
+Details for configuration the ssl client authentication
+process.
+
+=item ssl_client_pw
+
+Details for configuration the ssl client + password authentication
+process.
+
+=back
+
+=head4 Customizing authentication with a provider array
+
+For more information on how to create provider arrays see the section
+titled "Authentication Providers" in L<SVN::Client|SVN::Client>.
+
+=head4 Customizing authentication with an authentication baton
+
+You can also create an authentication baton from scratch. See
+particularly the methods C<SVN::Core::auth_open> and
+C<SVN::Core::auth_open_helper> documented in C<SVN::Core|SVN::Core>.
+You may also find it helpful to look at the C-API documentation
+found at http://svn.collab.net/svn-doxygen/group__auth__fns.html .
+
+=head4 Writing prompt callbacks
+
+A typical prompt callback for the command line would print a prompt
+to standard out, read in the reponse from standard in and populate
+the C<$oCredentials> parameter of the callback with whatever
+information it could get from the user.
+
+For a graphical interface, the workflow would be similar except
+that instead of writing to STDOUT and reading from STDIN, the input
+would be gathered from a dialog box.
+
+The callback methods have the following parameters:
+
+   # -----------------------------------------
+   # when provider is username or username_pw
+   # -----------------------------------------
+
+   sub promptForUserName {
+     my ($oCredentials, $sRealm, $sUserNameDefault
+        , $bMaySave, $oPool) = @_;
+
+     # if provider is ..., $oCredentials is an instance of ...
+     #
+     # username:     _p_svn_auth_cred_username_t
+     # username_pw:  _p_svn_auth_cred_simple_t
+
+     #... gather data here, populate $oCredentials ...
+   }
+
+   # -----------------------------------------
+   # when provider is ssl_server
+   # -----------------------------------------
+
+   sub promptForSSLServer {
+     my ($oCredentials, $sRealm, $iFail, $oServerCert
+        , $bMaySave, $oPool) = @_;
+
+     # $oCredentials is an instance of
+     #    svn_auth_cred_ssl_server_trust_t
+     # $oServerCert is an instance of
+     #    svn_auth_ssl_server_cert_info_t
+
+     #... gather data here, populate $oCredentials ...
+   }
+
+   # -----------------------------------------
+   # when provider is ssl_client or ssl_client_pw
+   # -----------------------------------------
+
+   sub promptForSSLClient {
+     my ($oCredentials, $sRealm, $bMaySave, $oPool) = @_;
+
+     # if provider is ..., $oCredentials is an instance of ...
+     #
+     # ssl_client:    _p_svn_auth_cred_ssl_client_cert_t
+     # ssl_client_pw: _p_svn_auth_cred_ssl_client_cert_pw_t
+
+     #... gather data here, populate $oCredentials ...
+   }
+
+=head3 Commit (log) messages
+
+
+Each time that a change is commit to the repository, subversion tries
+to accompany that change with a log message describing the change.
+For various reasons this message is not passed as a parameter in the
+C-API but rather is retrived via a callback method that can be called
+by an operation that involves a commit (e.g. C<commit>, but also
+a remote C<copy> or C<move> or other operation).
+
+In the C<SVN::Friendly::Client> class, methods that potentially commit
+data I<do> take a parameter.
+
+This callback is passed as a parameter to the constructor of the
+client context. It can also be set after the context object is
+created via the C<log_msg> method.
+
+
+=head3 Notifications
+
+Subversion calls a client's notification function whenever some sort
+of action takes place on the repository and/or working copy. A
+client context can be assigned a notification function in one of
+two ways: at creation via the parameter list of C<new> or after
+the fact via the C<configureNotification> method.
+
+In either case, C<SVN::Friendly::Client> provides two different
+ways to define notification callback: a code reference and a hash.
+The code reference is meant for simple situations where all
+notifications get the same response.
+
+The hash can be used when the response to notification depends on
+the specific action.  There are quite a number of different actions
+and every so often a subverversion release adds even more. If you
+were to use a code reference instead of the hash, your notification
+function would have to have a giant ugly C<if...elsif...else>
+statement.  With the hash, you select the actions you care about,
+provide callbacks for those specific actions (or groups of actions)
+and let C<SVN::Friendly::Client> take care of all of the ugly
+routing of actions to the correct response.
+
+=head4 Defining notifications with a code reference
+
+If you have a single response for all notifications (e.g. print out
+"Hey, such and such was done", then your easiest path is likely to
+be a callback function.  This function should expect the following
+parameters:
+
+  sub myNotifier {
+    my ($sPath, $iAction, $iKind, $sMime,$iState,$iRevision)=@_;
+
+    #... do something
+  }
+
+To install it:
+
+  # install at creation
+  $oClient = SVN::Friendly::Client->new(undef, undef, \&myNotifier);
+
+  # install later on
+  $oClient = SVN::Friendly::Client->new();
+  $oClient->configureNotification(\&myNotifier);
+
+
+=head4 Defining notifications with a hash
+
+If you need to respond differently to notifications based on the
+type of action triggering the notification you may want to consider
+using a notification hash rather than a notification callback.
+
+If you pass a notification hash,
+L<SVN::Friendly::Client|SVN::Friendly::Client> automatically
+converts that into a notification callback that identifies the
+current action and triggers the correct notififer code reference
+for that action.  In the hash, you can define notifier functions
+for individual actions or for groups of actions.
+
+  my $crAdd    = sub { print "I'm adding" };
+  my $crDelete = sub { print "I'm deleting" };
+
+  my $crCommit = sub {
+    my ($sPath, $iAction) = @_;
+    print "Committing! doing $iAction on $sPath";
+  }
+
+  my $crDefault = sub {
+    my ($sKey, $sPath, $iAction) = @_;
+    print "I'm doing it: $sKey, $iAction on $sPath\n";
+  };
+
+  my $hNotify
+     = { default => $crDefault
+       , schedule =>
+           {$SVN::Wc::Notify::Action::add => $crAdd
+            , $SVN::Wc::Notify::Action::delete => $crDelete
+           }
+       , commit => $crCommit
+       };
+
+  # install at creation
+  $oClient = SVN::Friendly::Client->new(undef, undef, $hNotify);
+
+  # install later on
+  $oClient = SVN::Friendly::Client->new();
+  $oClient->configureNotification($hNotify);
+
+The notification hash has top level keys representing the major
+responsitory and working copy action groups. Within each group
+there are usually several actions (e.g. schedule includes add,
+delete, copy, etc).
+
+   default   - handles any action/action group that does not have
+               its own callback
+
+   schedule  - change was scheduled
+   revert    - change was unscheduled
+   resolved  - a conflict was marked as resolved
+   update    - bring down changes from the repository
+   follow    - actions resulting from attempting to follow URL
+               redirects or externals definitions
+   commit    - a change was committed
+   revprop   - a change to revision properties occurred
+
+   lock      - a file was locked or unlocked
+   merge     - a notable event occurred during a merge
+   patch     - a patch was applied to the working copy
+   blame     - notable events during a blame method call
+
+You can assign either a code reference or a hash to these keys.
+Use a code reference if you want to respond to all
+actions in the group in the same way.  Use a hash
+if you would like to respond individually to actions within that
+operation.
+
+The action groups are discussed in detail below.
+
+=over
+
+=item C<default>
+
+Handles any action for which there is no assigned code refernce. The
+callback method expects the following parameters:
+
+   # -----------------------------------
+   # $sKey - any first level hash key listed below other than default.
+   # $sAction - any value that may be used in a hash assigned to
+   #            $sKey
+   # $sPath   - the path being operated upon by $sAction
+   # -----------------------------------
+
+   sub myHandler {
+      my ($sKey, $sPath, $iAction, action dependent params...) = @_;
+   }
+
+=item C<schedule>
+
+The C<schedule> configures responses to scheduling
+actions (adds, deleted, copies, renames), i.e. changes
+that are planned in the local working copy but have not yet been made
+in the repository
+
+You can assign this key either a code reference or a hash. If you
+pass a code reference, that function will be called after each file
+or directory is scheduled for addition, copying, or deletion. For
+rename operations it is called twice.  Subversion views a rename as
+a copy followed by a delete so it schedules two operations (copy,
+delete) rather than one.
+
+The callback method should look like this:
+
+  # $iAction  - the action id that triggered this
+  # $iKind    - one of the $SVN::Node constants
+  # $iState   - one of the $SVN::Wc::Notify::State constants
+
+  sub myScheduleActionHandler {
+    my ($sPath, $iAction, $iKind, $sMime, $iState, $iRevision) = @_;
+  }
+
+If you pass a hash, the hash should have a separate key each for
+each type of scheduled action (each value of C<$iAction>).  These
+keys should be assigned a callback that has above signature. The
+possible action/hash key values are:
+
+* C<$SVN::Wc::Notify::Action::add> - notifies that an addition has
+been scheduled.
+
+* C<$SVN::Wc::Notify::Action::delete> - notifies that a deletion
+has been scheduled
+
+* C<$SVN::Wc::Notify::Action::copy> - notifies that a copy has been
+scheduled.
+
+I<For 1.5,1.6 only:>
+
+* C<$SVN::Wc::Notify::Action::changelist_moved> - warns that a
+  path has been moved from one change list to another.
+  For 1.7 and up changelist_set/changelist_clear actions are sent
+  instead.
+
+
+I<For 1.5 and up>:
+
+* C<$SVN::Wc::Notify::Action::exists> -
+warns that an attempt was made to add a path that is already in
+the repository
+
+* C<$SVN::Wc::Notify::Action::changelist_set> -
+notifies that a changelist name has been set.
+
+* C<$SVN::Wc::Notify::Action::changelist_clear> -
+notifies that a changelist has been cleared.
+
+I<For 1.6 and up>:
+
+* C<$SVN::Wc::Notify::Action::property_added>
+
+* C<$SVN::Wc::Notify::Action::property_deleted>
+
+* C<$SVN::Wc::Notify::Action::property_modified>
+
+* C<$SVN::Wc::Notify::Action::property_deleted_nonexistent>
+
+=item C<revert>
+
+The C<revert> key configures responses to undo scheduled actions.
+It has the same signature as other progress reporting callbacks, and
+differs only in the list of action keys:
+
+* C<$SVN::Wc::Notify::Action::restore> - a file was added to the
+working copy in order to restore it to the version that was most
+recently checked out or updated.
+
+* C<$SVN::Wc::Notify::Action::revert> - a file in the working copy
+was modified in order to restore it to the version that was most
+recently checked out or updated.
+
+* C<$SVN::Wc::Notify::Action::failed_revert> - an attempt was made
+to restore a file in the working copy to its pristine state before
+changes were made.  The attempt failed.
+
+=item C<resolved>
+
+The C<resolved> key configures responses to the resolved action.
+Although this key can accept either a hash or a code reference, there
+is little point in using a hash as there is only one action:
+
+* C<$SVN::Wc::Notify::Action::resolved>
+
+=item C<update>
+
+The C<update> key configures responses to update actions.  It has
+the same signature as other progress reporting callbacks, and
+differs only in the values used as keys for the action hash:
+
+* C<$SVN::Wc::Notify::Action::update_add> - a file or directory
+was added to the working copy in order to reconcile it with the
+latest revision.
+
+* C<$SVN::Wc::Notify::Action::update_delete> - a file or directory
+was deleted from the working copy in order to reconcile the working
+copy with the lastest revision.
+
+* C<$SVN::Wc::Notify::Action::update_update> - properties or text
+was updated for a file or directory in the working copy in order
+to reconcile the working copy with the latest revision.
+
+* C<$SVN::Wc::Notify::Action::update_external> - a directory flagged
+as external was updated.
+
+* C<$SVN::Wc::Notify::Action::skip> - a path was skipped during the
+update, usually due to a conflict.
+
+* C<$SVN::Wc::Notify::Action::update_completed> - the update process
+has been completed.
+
+I<For subversion 1.5 and up>:
+
+* C<$SVN::Wc::Notify::Action::update_replace> - a file with the same
+name but a different history replaced the working copy version of
+the file so that the working copy could be updated to match the
+lastest repository revision.
+
+I<For subversion 1.6 and up>:
+
+* C<$SVN::Wc::Notify::Action::tree_conflict> - an update resulted in
+a tree conflict.  A tree conflict occurs when the current working
+copy has edited a file that was deleted from the repository since
+the last time the working copy and repository were synchronized.
+
+I<For subversion 1.7 and up>:
+
+* C<$SVN::Wc::Notify::Action::update_started>
+
+* C<$SVN::Wc::Notify::Action::update_obstruction>
+
+* C<$SVN::Wc::Notify::Action::update_external_removed>
+
+* C<$SVN::Wc::Notify::Action::update_add_deleted>
+
+* C<$SVN::Wc::Notify::Action::update_update_deleted>
+
+* C<$SVN::Wc::Notify::Action::upgraded_path>
+
+=item C<follow>
+
+The C<follow> key configures responses to attempts to follow
+the repository URL passes as either operation targets or stored
+as externals definitions.
+
+* C<SVN::Wc::Notify::Action::status_external> - called before
+processing each external definiton.
+
+* C<SVN::Wc::Notify::Action::status_completed> - called after
+processing each external definition.
+
+I<For subversion 1.6 and up>:
+
+* C<$SVN::Wc::Notify::Action::failed_external> - an external
+definition could not be resolved.
+
+I<For subversion 1.7 and up>:
+
+* C<$SVN::Wc::Notify::Action::url_redirect> - a URL specified
+in a working copy or externals definition was redirected.
+
+=item C<commit>
+
+The C<commit> key configures responses to commit actions.
+Commit actions include, of course, explicit calls to the
+Client's C<commit> method but also any action that changes
+the central repository without touching the local copy.
+
+As with other actions it may be assigned either a hash or a code
+reference. The keys of the hash are:
+
+* C<$SVN::Wc::Notify::Action::commit_added> - a file or directory
+path was added to the repository. This action is triggered
+after both a scheduled add and a scheduled copy action.
+
+* C<$SVN::Wc::Notify::Action::commit_deleted> - a file or directory
+was deleted from the repository.
+
+* C<$SVN::Wc::Notify::Action::commit_modified> - text or properties
+changes on a file or directory have been committed to the repository.
+
+* C<$SVN::Wc::Notify::Action::commit_replaced> - a relacement for
+a file was committed to the repository.  A file is considered to
+be a replacement if it has the same name as a file that was
+previously moved or deleted.  The replacement file will have a
+separate history and identity from the previously deleted file even
+though they share a name.
+
+* C<$SVN::Wc::Notify::Action::commit_postfix_txdelta> - the actual
+changes to file contents has been transmitted and posted to the
+repository. This action happens once at the end of the commit
+process whenever a file has been added or modified. Rather than
+submit changes piecemeal subversion collects all text changes into
+a single action at the end after verifying that all changes to
+repository paths will be accepted.
+
+=item C<revprop>
+
+The C<revprop> key configures repsonses to revision property
+actions.
+
+I<For 1.6 and up>:
+
+* C<SVN::Wc::Notify::Action::revprop_set>
+
+* C<SVN::Wc::Notify::Action::revprop_deleted>
+
+This key will be ignored for subversions earlier than 1.6
+
+=item C<lock>
+
+The C<lock> key configures responses to lock actions.  It has the same
+signature as other progress reporting callbacks, and differs only
+in the list of action keys:
+
+* C<SVN::Wc::Notify::Action::locked>
+
+* C<SVN::Wc::Notify::Action::unlocked>
+
+* C<SVN::Wc::Notify::Action::failed_lock>
+
+* C<SVN::Wc::Notify::Action::failed_unlock>
+
+=item C<merge>
+
+Starting with 1.5, subversion sends notifications during the merge
+process.  The C<merge> key configures responses to those
+notifications. It has the same signature as other progress reporting
+callbacks.  The key values of its action hash are:
+
+I<For 1.5 and up>:
+
+* C<SVN::Wc::Notify::Action::merge_begin>
+
+* C<SVN::Wc::Notify::Action::foreign_merge_begin>
+
+I<For 1.6 and up>:
+
+* C<SVN::Wc::Notify::Action::merge_completed>
+
+I<For subversion 1.7 and up>:
+
+* C<$SVN::Wc::Notify::Action::merge_record_info>
+
+* C<$SVN::Wc::Notify::Action::merge_record_info_begin>
+
+* C<$SVN::Wc::Notify::Action::merge_elide_info>
+
+This key will be ignored for subversions earlier than 1.5.
+
+=item C<patch>
+
+The C<patch> key configures responses to C<patch> actions.
+
+I<For 1.7 and up>:
+
+* C<SVN::Wc::Notify::Action::patch>
+
+* C<SVN::Wc::Notify::Action::patch_applied_hunk>
+
+* C<SVN::Wc::Notify::Action::patch_rejected_hunk>
+
+* C<SVN::Wc::Notify::Action::patch_hunk_already_applied>
+
+This key will be ignored for subversions earlier than 1.7.
+
+=item C<blame>
+
+The C<blame> key configures responses to blame actions.  There is
+only one such action:
+
+C<SVN::Wc::Notify::Action::blame_revision>
+
+=back
+
+=head2 Using the client object
+
+=head3 Synchronizing working copies and repositories
+
+Although the repository can be edited directory, the normal practice
+is to make a working copy of the repository and edit that. The
+working copy stores a snapshot of the lastest version of each
+file and directory of interest.  This may be each and every file
+and directory in the repository, but more often it is just those
+files and directories one is currently working on.
+
+To create a working copy, you use the C<checkout> method.  A
+special command is needed because the directories of the working
+copy each have a special hidden subdirectory (C<.svn>) that stores
+the lastest snapshot and all scheduled changes to that snapshot.
+
+When a working copy is created it "burns in" the repository from
+which it was created. The upside is that you don't need to specify
+the repository every time you want to upload and download information
+from the repository.  The downside is that you must patch the
+working copy if the repository moves.  You can use the C<relocate>
+method for that purpose.
+
+After making changes to the local working copy, you can see all
+the scheduled changes using the C<status> method.  This method can
+also be used to check the repository to see if any changes have been
+posted to the repository since the working copy snapshot was
+downloaded.
+
+To bring in changes since the working copy snapshot was downloaded
+one uses the C<update> method. This method will download and merge
+in changes to the files and directories in your working copy. It
+is often a good idea to run this command I<before> uploading your
+changes to the repository. This lets you adjust your own changes to
+be consistent with those of others before committing those changes.
+
+To let subversion know that you have examined a conflict and
+resolved it to your satisfaction, you can use the C<resolve> method
+on a conflicted file.
+
+To upload change made locally and store them in the repository, one
+uses the C<commit> method. This method checks to see if any changes
+have been posted to the repository since the working copy snapshot
+was downloaded. If so, it looks for possible conflicts between those
+changes and the changes made locally. If conflicts are found the
+commit will fail. If the commit is successful, the working copy
+snapshot will be updated to look like the current HEAD revision.
+
+If a commit fails due to conflicts, it will often be left in a
+transitional state. Certain local edits can also leave things
+in a transiational state, for example, attempts to copy resources
+scheduled for addition that have not yet been added to the
+respository) can also leave things in a transitional state.
+
+To clean up partially completed commit transactions and failed
+scheduling operations, use the C<cleanup> method before trying
+to commit again.  In general if the commit involves a directory
+path, you will not be able to run commit again until you use this
+method.
+
+To signal to others that they should not change certain files in
+the repository, you can lock those files and directories with the
+C<lock> method. They will be unlocked automatically with the next
+commit by default, but you can unlock them earlier using the
+C<unlock> method. You can also use the C<unlock> method to release
+any locks you held onto after the commit.
+
+When you are finished with your work on a particular group of
+files you don't need to delete the working copy. Alternatively
+you can "switch" the working copy to a new branch or project within
+the repository using the C<switch> method.
+
+See below this listing of parameters and calling conventions for
+more detailed discussion of each method.
+
+  #------------------------------------------------------
+  # identifying the associated repository
+  #------------------------------------------------------
+
+  my $sUUID  = $oClient->getRepositoryUUID($sWc, $oPool);
+  my $sRoot  = $oClient->getRepositoryRootURL($sWc, $oPool);
+
+  #------------------------------------------------------
+  # - $oStatus     an svn_wc_status_t object
+  #
+  # - $iUpdateRev  the revision number to which the working copy
+  #                of $sWc was updated
+  #
+  # - $aUpdateRevs the revision numbers to which the workng copies
+  #                of the paths in $xWcPaths were updated. The
+  #                revisions will be in the order of the paths.
+  #
+  # - $xPaths     a single path or array of paths. The paths may
+  #               be either working copy or repository paths.
+  #
+  # - $sWc        working copy path
+  #
+  # - $xWcPaths   a single path or array of working copy paths
+  #               identifying files and directories to commit
+  #
+  # - $xRepos     URL of repository - maybe string or uri object
+  #
+  # - $xPeg       the repository revision against which the working
+  #               copy will be compared or updated. Defaults to HEAD
+  #               Other legal values include: 'PREV','COMMITTED',
+  #               'BASE', 'WORKING', revision numbers, and date
+  #               strins in ISO8601 format.
+  #
+  # - $crVisit    code reference to function called when each file
+  #               in a status report is visited.
+  #
+  # - $bUpdate    false = status shows local changes only
+  #               true = status shows changes to repository as well
+  #               defaults to false
+  #               Note: (status ignore the peg parameter unless this
+  #               is true)
+  #
+  # - $bAll       false = status visits only files with changes
+  #               true = status visits all files
+  #               defaults to false
+  #
+  # - $bNoIgnore  false = status ignores unversioned files that
+  #               fit the cvs-ignore property pattern.
+  #               true = status visits even ignored files
+  #               defaults to false
+  #
+  # - $bSkipExternals see Parameter List Notes and Conventions
+  #
+  # - $bKeepLocks true if commit does not release locks
+  #
+  # - $bStealLock true if existing lock should be stolen from
+  #               working copy that originally created it and
+  #               given to the current working copy.
+  #
+  # - $bBreakLock true if existing lock should be cleared
+  #
+  # - $bCaptureRevs If true, the method will return an array
+  #                 populated with revision ids. There will be
+  #                 one id returned for each path in $xWcPaths.
+  #                 This will be the revision to which that path
+  #                 was updated.
+  #
+  #------------------------------------------------------
+
+  $iUpdateRev = $oClient->checkout($xRepos, $xPeg, $sWc);
+  $iUpdateRev = $oClient->checkout($xRepos, $xPeg, $sWc, $bRecurse
+     , $oPool);
+
+     $iUpdateRev = $oClient->checkout1_1($xRepos, $sWc, $xPeg
+        , $bRecurse, $oPool);
+
+     $iUpdateRev = $oClient->checkout1_4($xRepos, $sWc, $xPeg
+        , $xRev, $bRecurse, $bSkipExternals, $oPool);
+
+     $iUpdateRev = $oClient->checkout1_5($xRepos, $sWc, $xPeg, $xRev
+        , $iDepth, $bSkipExternals, $bAllowUnversionedObstructions
+        , $oPool);
+
+     $iUpdateRev = $oClient->checkout1_6($xRepos, $sWc, $xPeg, $xRev
+        , $iDepth, $bSkipExternals, $bAllowUnversionedObstructions
+        , $oPool);
+
+     $iUpdateRev = $oClient->checkout1_7($xRepos, $sWc, $xPeg, $xRev
+        , $iDepth, $bSkipExternals, $bAllowUnversionedObstructions
+        , $oPool);
+
+
+  my $oStatus = $oClient->getStatus($sWc);
+
+  $oClient->status($sWc, $crVisit);
+  $oClient->status($sWc, $crVisit, $bRecurse, $bUpdate, $xPeg
+     , $bAll, $bNoIgnore, $oPool);
+
+     $oClient->status1_1($sWc, $xPeg, $crVisit, $bRecurse, $bAll
+        , $bUpdate, $bNoIgnore, $oPool);
+
+     $oClient->status1_4($sWc, $xPeg, $crVisit, $bRecurse, $bAll
+        , $bUpdate, $bNoIgnore, $bSkipExternals, $oPool);
+
+     $oClient->status1_5($sWc, $xPeg, $crVisit, $iDepth, $bAll
+        , $bUpdate, $bNoIgnore, $bSkipExternals, $aChangeLists
+        , $oPool);
+
+     $oClient->status1_6($sWc, $xPeg, $crVisit, $iDepth, $bAll
+        , $bUpdate, $bNoIgnore, $bSkipExternals, $aChangeLists
+        , $oPool);
+
+     $oClient->status1_7($sWc, $xPeg, $iDepth, $bAll
+        , $bUpdate, $bNoIgnore, $bSkipExternals, $bDepthAsSticky
+        , $aChangeLists, $crVisit, $oPool);
+
+
+  $iUpdateRev = $oClient->update($sWc);
+  $iUpdateRev = $oClient->update($sWc, $xPeg, $bRecurse, $oPool);
+
+     $iUpdateRev= $oClient->update1_1($sWc, $xPeg, $bRecurse, $oPool);
+
+     $aUpdateRevs = $oClient->update1_4($xWcPaths, $xPeg, $bRecurse
+       , $bSkipExternals, $oPool);
+
+     $aUpdateRevs = $oClient->update1_5($xWcPaths, $xPeg, $iDepth
+       , $bDepthIsSticky, $bSkipExternals
+       , $bAllowUnversionedObstructions, $oPool);
+
+     $aUpdateRevs = $oClient->update1_6($xWcPaths, $xPeg, $iDepth
+       , $bDepthIsSticky, $bSkipExternals
+       , $bAllowUnversionedObstructions, $oPool);
+
+     $aUpdateRevs = $oClient->update1_7($xWcPaths, $xPeg, $iDepth
+       , $bDepthIsSticky, $bSkipExternals
+       , $bAllowUnversionedObstructions, $bMakeParents, $oPool);
+
+
+  $oClient->resolved($sWc);
+  $oClient->resolved($sWc, $bRecurse, $oPool);
+
+      # resolved1_1, etc have the same parameters
+
+
+  $oCommitInfo = $oClient->commit($xWcPaths);
+  $oCommitInfo = $oClient->commit($xWcPaths, $sComment, $bRecurse);
+
+     $oCommitInfo = $oClient->commit1_1($xWcPaths, $sComment
+        , $bNonRecursive, $oPool);
+
+     $oCommitInfo = $oClient->commit1_4($xWcPaths, $sComment
+        , $bRecurse, $bKeepLocks, $oPool);
+
+     $oCommitInfo = $oClient->commit1_5($xWcPaths, $sComment
+        , $iDepth, $bKeepLocks, $bKeepChangelists, $aChangeLists
+        , $hRevProps, $oPool);
+
+     $oCommitInfo = $oClient->commit1_6($xWcPaths, $sComment
+        , $iDepth, $bKeepLocks, $bKeepChangelists, $aChangeLists
+        , $hRevProps, $oPool);
+
+     $oCommitInfo = $oClient->commit1_7($xWcPaths, $sComment
+        , $iDepth, $bKeepLocks, $bKeepChangelists, $aChangeLists
+        , $hRevProps, $crCommit, $oPool);
+
+
+  $oClient->cleanup($sWc);
+  $oClient->cleanup($sWc, $oPool);
+
+     # cleanup1_1, etc have the same parameters
+
+
+  $oClient->lock($xWcPaths);
+  $oClient->lock($xWcPaths, $sComment, $bStealLock, $oPool);
+
+     # lock1_1, etc have the same parameters
+
+
+  $oClient->unlock($xPaths);
+  $oClient->unlock($xPaths, $bBreakLock, $oPool);
+
+     # unlock1_1, etc have the same parameters
+
+
+  #------------------------------------------------------
+  # patching/changing the associated repository path
+  #------------------------------------------------------
+
+  $iRev = $oClient->switch($sWc, $xRepos);
+  $iRev = $oClient->switch($sWc, $xRepos, $xPeg, $bRecurse, $oPool);
+
+    $iRev = $oClient->switch1_1($sWc, $xRepos, $xPeg, $bRecurse
+      , $oPool);
+
+    $iRev = $oClient->switch1_4($sWc, $xRepos, $xPeg, $bRecurse
+      , $oPool);
+
+    $iRev = $oClient->switch1_5($sWc, $xRepos, $xPeg, $xRev, $iDepth
+      , $bDepthIsSticky, $bIgnoreExternals
+      , $bAllowUnversionedObstructions, $oPool);
+
+    $iRev = $oClient->switch1_6($sWc, $xRepos, $xPeg, $xRev, $iDepth
+      , $bDepthIsSticky, $bIgnoreExternals
+      , $bAllowUnversionedObstructions, $oPool);
+
+    $iRev = $oClient->switch1_7($sWc, $xRepos, $xPeg, $xRev, $iDepth
+      , $bDepthIsSticky, $bIgnoreExternals
+      , $bAllowUnversionedObstructions, $oPool);
+
+
+  $oClient->relocate($sWc, $xFromRepos, $xToRepos);
+  $oClient->relocate($sWc, $xFromRepos, $xToRepos, $oPool);
+
+    $oClient->relocate1_1($sWc, $xFromRepos, $xToRepos, $bRecurse
+       , $oPool);
+
+    $oClient->relocate1_4($sWc, $xFromRepos, $xToRepos, $bRecurse
+       , $oPool);
+
+    $oClient->relocate1_5($sWc, $xFromRepos, $xToRepos, $bRecurse
+       , $oPool);
+
+    $oClient->relocate1_6($sWc, $xFromRepos, $xToRepos, $bRecurse
+       , $oPool);
+
+    $oClient->relocate1_7($sWc, $xFromRepos, $xToRepos
+       , $bIgnoreExternals, $oPool);
+
+    Note: $bRecurse is required to be true as of 1.7API
+
+=over
+
+=item checkout
+
+Equivalent on the command line to C<svn checkout>. 
+
+Create a working copy of the repository in a local file system
+directory.  For additional documentation see
+
+* svn checkout in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__clnt__wc__checkout.html
+
+=item cleanup
+
+Equivalent on the command line to C<svn cleanup>.
+
+Gets rid of stale locks and other transaction debris that might be
+interfering with client side actions involving the local repository
+copy.  For additional documentation see
+
+* svn cleanup in  L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Cleanup.html
+
+=item commit
+
+Equivalent on the command line to C<svn commit>.
+
+This method uploads and commits scheduled changes to directory lists,
+file contents and properties to the central repository.  The return
+value depends on the subversion release:
+
+* prior to 1.4, returns C<svn_client_commit_info_t>
+
+* 1.4, 1.5 return C<svn_commit_info_t>
+
+* 1.6 and beyond - no return value; a call-back is used instead so
+  that the call can construct their own summary data from the
+  commit process.
+
+Both return objects have the following methods in common
+
+* C<< $oCommitInfo->revision() >> - returns the HEAD revision number
+  created by this commit.
+
+* C<< $oCommitInfo->author() >> - the author responsible for the
+  commit
+
+* C<< $oCommitInfo->date() >> - the server side date of the commit
+
+
+For additional documentation see
+
+* svn commit in  L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Commit.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__client__commit__info__t.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__commit__info__t.html
+
+=item lock
+
+Equivalent on the command line to C<svn lock>.
+
+Places a lock on a file.  This prevents other users from editing
+and committing the file without explicitly breaking or stealing
+the lock.  This method is primarily used with binary files that can
+not be easily merged.
+
+This method only applies to files.  At present there is no directory
+locking.
+
+For additional documentaiton see
+
+* svn lock in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__locking__funcs.html
+
+=item relocate
+
+Equivalent on the command line to C<svn switch --relocate old new>
+
+If the repository associated with a working copy is moved, then
+the working copy will reference a non-existant repository. The
+relocate method patches a working copy directory (normally the
+working copy root) so that it now points to a new valid repository.
+No other changes will be made.  In particular files and directories
+will remain unchanged.
+
+The new URL must point to a repository with the same UUID or there
+will be an error.  This method cannot be used to associate the
+working copy with a completely new repository.
+
+
+For additional documentation see L<http://svnbook.red-bean.com>
+for its documentation of the switch svn subcommand.
+
+* svn switch in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Relocate.html
+
+=item resolved
+
+Equivalent on the command line to C<svn resolved>.
+
+Sometimes subversion sees two possible ways to change a file and
+doesn't know which one to choose.  When this happens, subversion
+marks the file as "conflicted" and it will mark up the file to
+indicate just what it is confused about.  The user must then go
+into the file and decide which changes should be kept.  When this
+is done, the user must tell subversion that the file is not longer
+"conflicted".  This end-user action is called "resolution".
+
+C<resolved(...)> removes the conflicted state from a file in the
+working copy so that it can be committed.  Presumably, the user or
+a computer program has cleared up the confusion before this method
+is called.
+
+For more information see:
+
+* svn resolved in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Resolved.html
+
+=item status
+
+Equivalent on the command line to C<svn status>.
+
+Compares the local repository and the central repository, looking
+for uncommitted changes, conflicted files, files that have no
+association with a repository revision, and files whose contents
+no longer reflect the latest and greatest version in the central
+repository.
+
+This method doesn't change either the local copy or the central
+repository.  It is often used to preview the effect of an revert,
+update or commit action.
+
+For additional documentation see
+
+* svn status in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Status.html
+
+=item switch
+
+Equivalent on the command line to C<svn switch> without the
+relocate parameter.
+
+Assign a working copy directory (normally the working copy root)
+to another repository and replace all files and directories with
+those from the new repository.
+
+Alternatively assign the working copy directory to a new branch
+of the current repository. Again replace all files and
+directories with those from the new branch.
+
+For additional documentation see
+
+* svn switch in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Switch.html
+
+=item unlock
+
+Equivalent on the command line to C<svn unlock>.
+
+Unlocks a file. At present there is no directory locking or locking
+so no need to unlock directories.
+
+For additional documentaiton see
+
+* svn unlock in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__locking__funcs.html
+
+
+=item update
+
+Equivalent on the command line to C<svn update>.
+
+Download the latest changes from the repository to the local copy,
+merging changes where possible, and noting conflicts when merges
+are not possible.  A conflict will arise whenever a file is changed
+in incompatible ways, e.g. the local copy and the central repository
+version have changed line X in two different ways or the local copy
+has deleted a file that the repository has modified (or vice versa).
+
+For additional documentation see
+
+* svn update in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Update.html
+
+=back
+
+=head3 Creating, deleting, and removing versioned data
+
+Subversion supports versioning of directory listings, files,
+and properties associated with directories and files. If used
+consistently to copy and rename files it will also track the
+naming history of files and directories so that the history
+of a file is not lost when it renamed.
+
+The following general rules apply to the methods below:
+
+* Directory operations are recursive by default.
+
+* Operations on working copy paths will both modify the local file
+  system and schedule the operation for later commiting to the
+  repository. They have no effect on the repository itself until the
+  commit command is run. See the next section for the commit command.
+
+* There is no way to schedule a change without actually changing the
+  local copy.  If you added a file accidentally and then decide that
+  you don't want it in the repository after all, use the C<revert>
+  command, I<not> C<delete>.  The delete command will delete the
+  file itself along with unscheduling the addition.
+  (Note: the Subversion 5 API provides a flag to allow scheduling of
+  deletes without actually deleting the file locally, but it isn't
+  the default behavior and this feature is not available to earlier
+  releases).
+
+* Operations on repository paths have an immediate effect on the
+  repository and will fail if the client object's authentication
+  baton does not provide acccess to the repository.  They will have
+  no effect on any local working copy until that working copy runs
+  the update command (see next section).
+
+* Operations that copy files,paths, and properties can have either
+  the repository or the working copy as their "from" parameter.
+  This lets one revive historic versions and bring them into the
+  lastest HEAD revision of the repository.
+
+* You can't actually add or delete filesand directories from any
+  historic version in the repository, including HEAD.  When an
+  operation takes place directly on the repository, it creates
+  a new version and the HEAD revision is bumped up on.  It looks
+  like you edited HEAD, but in fact the repository created a new
+  version and called that new version HEAD.
+
+* Revert undoes any local modifications. It doesn't require
+  repository access because it uses the versions of each file that
+  were cached when the last C<update>,C<checkout>, or C<commit>
+  was run.
+
+  #------------------------------------------------------
+  # - $xPaths        string or array containing working copy
+  #                  and/or repository paths
+  # - $xPath         working copy and/or repository path
+  # - $xWcPath       string or array containing working copy paths
+  # - $sWcPath       a working copy path
+  # - $xFrom         working copy or repos path
+  # - $xTo           working copy or repos path
+  # - $bSkipModified 1 to avoid deleting modified files when
+  #                  deleting or moving, 0 otherwise
+  #------------------------------------------------------
+
+  $oClient->add($sWc);
+  $oClient->add($sWc, $bRecurse, $oPool);
+
+     $oClient->add1_1($sWcPath, $bRecurse, $oPool);
+
+     $oClient->add1_4($sWcPath, $bRecurse, $bForceAdd, $bNoIgnore
+        , $oPool);
+
+     $oClient->add1_5($sWcPath, $iDepth, $bForceAdd, $bNoIgnore
+        , $bAddParents, $oPool);
+
+     $oClient->add1_6($sWcPath, $iDepth, $bForceAdd, $bNoIgnore
+        , $bAddParents, $oPool);
+
+     $oClient->add1_7($sWcPath, $iDepth, $bForceAdd, $bNoIgnore
+        , $bAddParents, $oPool);
+
+
+  $oClient->mkdir($xPaths);
+  $oClient->mkdir($xPaths, $sComment, $oPool);
+
+     $oClient->mkdir1_1($xPaths, $sComment, $oPool);
+
+     $oClient->mkdir1_4($xPaths, $sComment, $oPool);
+
+     $oClient->mkdir1_5($xPaths, $sComment, $bMakeParents
+        , $hRevProps, $oPool);
+
+     $oClient->mkdir1_6($xPaths, $sComment, $bMakeParents
+        , $hRevProps, $oPool);
+
+     $oClient->mkdir1_7($xPaths, $sComment, $bMakeParents
+        , $hRevProps, $crCommit, $oPool);
+
+
+  $oClient->delete($xPaths);
+  $oClient->delete($xPaths, $sComment, $bSkipModified, $oPool);
+
+     $oClient->delete1_1($xPaths, $sComment, $bForce, $oPool);
+
+     $oClient->delete1_4($xPaths, $sComment, $bForce, $oPool);
+
+     $oClient->delete1_5($xPaths, $sComment, $bForce, $bKeepLocal
+        , $hRevProp, $oPool);
+
+     $oClient->delete1_6($xPaths, $sComment, $bForce, $bKeepLocal
+        , $hRevProp, $oPool);
+
+     $oClient->delete1_7($xPaths, $sComment, $bForce, $bKeepLocal
+        , $hRevProp, $crCommit, $oPool);
+
+
+  $oClient->copy($xFrom, $xPeg, $xTo);
+  $oClient->copy($xFrom, $xPeg, $xTo, $sComment, $oPool);
+
+     $oClient->copy1_1($sFrom, $xPeg, $sTo, $sComment, $oPool);
+
+     $oClient->copy1_4($sFrom, $xPeg, $sTo, $sComment, $oPool);
+
+     $oClient->copy1_5($xFrom, $xPeg, $sTo, $sComment, $bCopyAsChild
+        , $bMakeParents, $hRevProps, $oPool);
+
+     $oClient->copy1_6($xFrom, $xPeg, $sTo, $sComment, $bCopyAsChild
+        , $bMakeParents, $bIgnoreExternals, $hRevProps, $oPool);
+
+     $oClient->copy1_7($xFrom, $xPeg, $sTo, $sComment, $bCopyAsChild
+        , $bMakeParents, $bIgnoreExternals, $hRevProps
+        , $crCommit, $oPool);
+
+
+  $oClient->move($xFrom, $xTo, $bForce);
+  $oClient->move($xFrom, $xTo, $bForce, $oPool);
+
+     $oClient->move1_1($xFrom, $xPeg, $sTo, $bForce, $oPool);
+
+     $oClient->move1_4($xFrom, $sTo, $bForce, $oPool);
+
+     $oClient->move1_5($xFromPaths, $sTo, $bForce, $bMoveAsChild
+        , $bMakeParents, $hRevProps, $oPool);
+
+     $oClient->move1_6($xFromPaths, $sTo, $bForce, $bMoveAsChild
+        , $bMakeParents, $hRevProps, $oPool);
+
+     $oClient->move1_7($xFromPaths, $sTo, $bMoveAsChild
+        , $bMakeParents, $hRevProps, $crCommit, $oPool);
+
+  #------------------------------------------------------
+  # path properties
+  #------------------------------------------------------
+  # $sProp        the name of a property
+  #
+  # $sValue       the value to assign to the property
+  #
+  # $bSkipChecks  If true, permit the user to assign values or 
+  #               properties that would normally be considered
+  #               invalid, e.. newlines in the revision's
+  #               C<svn:author> property.
+  #------------------------------------------------------
+
+  $oClient->propset($xPath, $sProp, $sValue);
+  $oClient->propset($xPath, $sProp, $sValue, $bRecurse, $oPool);
+
+     $oClient->propset1_1($sProp, $sValue, $xPath, $bRecurse, $oPool);
+
+     $oClient->propset1_4($sProp, $sValue, $xPath, $bRecurse
+        , $bSkipChecks, $oPool);
+
+     $oClient->propset1_5($sProp, $sValue, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp, $oPool);
+
+     $oClient->propset1_6($sProp, $sValue, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp, $oPool);
+
+     $oClient->propset1_7($sProp, $sValue, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp
+        , $crCommit, $oPool);
+
+
+  $oClient->propdel($xPath, $sProp);
+  $oClient->propdel($xPath, $sProp, $bRecurse, $oPool);
+
+     $oClient->propset1_1($sProp, $xPath, $bRecurse, $oPool);
+
+     $oClient->propset1_4($sProp, $xPath, $bRecurse, $bSkipChecks
+        , $oPool);
+
+     $oClient->propset1_5($sProp, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp
+        , $oPool);
+
+     $oClient->propset1_6($sProp, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp
+        , $oPool);
+
+     $oClient->propset1_7($sProp, $xPath, $iDepth
+        , $bSkipChecks, $xBaseRev, $aChangeLists, $hRevProp
+        , $crCommit, $oPool);
+
+  #------------------------------------------------------
+  # undo scheduled changes
+  #------------------------------------------------------
+
+  $oClient->revert($sWc);
+  $oClient->revert($sWc, $bRecurse, $oPool);
+
+     $oClient->revert1_1($sWc, $bRecurse, $oPool);
+
+     $oClient->revert1_4($sWc, $bRecurse, $oPool);
+
+     $oClient->revert1_5($sWc, $iDepth, $aChangeLists, $oPool);
+
+     $oClient->revert1_6($sWc, $iDepth, $aChangeLists, $oPool);
+
+     $oClient->revert1_7($sWc, $iDepth, $aChangeLists, $oPool);
+
+
+=over
+
+=item add
+
+Equivalent on the command line to C<svn add>.
+
+Schedule an unversioned file or directory to become part of the
+repository.
+
+Note: C<add()> and C<add1()> will fail if the immediate parent of
+the file is not under version control.  For later versions of
+subversion the file must have a parent directory (near or distant)
+that is already associated with a repository version.  The file
+will be associated with the same repository revision as that parent.
+Any intermediate directories between the file or directory to be
+added and the parent will also be added to the repository.
+
+If a directory is being added, all of its contents (excepting
+those excluded by cvs-ignore) will be added recursively as well
+unless the C<$bRecurse> flag is set to a defined false value.
+
+For more documentation see
+
+* svn add in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Add.html
+
+=item copy
+
+Equivalent on the command line to C<svn copy>.
+
+Copy a file or directory under version management (either in the
+repository or working copy) to a new file or directory. Both the
+source and target may be any working copy or repository file.
+
+If the target is given as a repository path the copy will
+be committed immediately. If the target is a working copy path it
+will be scheduled for addition.  This command has no effect at all
+on the source of the copy.
+
+
+For more documentation see
+
+* svn copy in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Copy.html
+
+=item delete
+
+Equivalent on the command line to C<svn delete>.
+
+Delete a file in the working copy or repository HEAD version.
+For more documentation see
+
+* svn delete in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Delete.html
+
+=item mkdir
+
+Equivalent on the command line to C<svn mkdir>.
+
+Creates a directory and any missing parents, then adds it to the
+working copy or repository. If the target directory is a central
+repository URL, then this method creates a directory in the
+repository.  Otherwise, a directory will be created in the local
+repository copy and scheduled for adding to the repository on the
+next call to the C<commit(...)> method.
+
+For more documentation see
+
+* svn mkdir in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Mkdir.html
+
+=item move
+
+Equivalent on the command line to C<svn move>.
+
+Rename a file or directory in the HEAD revision or current working
+copy. If the target is given as a repository path the change will
+be committed immediately. If the target is a working copy path the
+source file will be scheduled for deletion and the destination file
+will be scheduled for addition.
+
+For more documentation see
+
+* svn move in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Move.html
+
+=item propdel
+
+Equivalent on the command line to C<svn propdel> without the
+C<--revprop> flag.
+
+Deletes a property on a file or directory within a revision.
+
+For more documentation see
+
+* svn propdel in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+
+=item propset
+
+Equivalent on the command line to C<svn propset> without the
+C<--revprop> flag.
+
+Add or sets a property on a file or directory within a revision. The
+property value will have a history along with the file itself.
+
+For more documentation see
+
+* svn propset in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+=item revert
+
+Equivalent on the command line to C<svn revert>.
+
+For a scheduled add, reverses it so that the path will be
+unversioned.  For a file or directory already part of the repository,
+undoes any uncommitted modifications to the file or directory
+contents.
+
+For more documentation see
+
+* svn revert in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Revert.html
+
+=back
+
+=head3 Branching and tagging versions
+
+There are no special methods for branching or tagging a revision in
+a subversion repository.
+
+In subversion a branch is just a path in the repository, typically
+named "/branches/myBranchName/".  To create a branch, pick a
+revision you wish to branch from and use the C<copy> method to copy
+files from that revision to the branch directory.  The tag lives
+in the current revision, not the one it was copied from.
+
+A tag is also just a path in the repository, typically named
+"/tags/myTagName". Again to create a tag, you use the C<copy>
+method described above to copy the files and directories in the
+revision of interest into your tag directory.
+
+As mentioned above repository to repository copies are committed
+immediately. The newly created branch or tag directory lives in
+the new HEAD revision, not the one it was copied from.
+
+There is no uploading or downloading from the repository and
+internally, the copy simply creates a link between the revision
+and a path name in the new revision. In general tagging and branching
+is a very cheap operation even if it seems heavy because of the
+size of the directory tree being tagged.  Even branches are cheap.
+A new slot for the files in the branch won't be created until that
+file is actually edited and needs to have history beyond the
+revision from which it was copied.
+
+=head3 Comparing and merging versions
+
+You can programmatically run diffs and merges with the following
+methods:
+
+  #------------------------------------------------------
+  # $aCmdLineOptions  options to pass to a command line diff tool
+  #
+  # $sHeaderEncoding  used only if subversion is configured to use
+  #                   its internal diff tool.  For legal values
+  #                   see: Parameter list conventions and notes
+  #                   defaults to 'UTF-8' if undefined.
+  #
+  # $bIgnoreAncestry  If true, same named items with different
+  #                   peg revision ranges will be compared as if
+  #                   they had a common ancestor.
+  #
+  # $xOutfile         A writable file handle or alternatively the
+  #                   the name of the file which will store the
+  #                   output of diff. Note: the file handle must
+  #                   be tied to an actual file descriptor (e.g.
+  #                   STDOUT or a handle to a temp file.  File
+  #                   handles on string buffers are not allowed.
+  #
+  # $xErrFile         A writable file handle or alternatively the
+  #                   name of the file which will store error
+  #                   output from the diff operation. As with
+  #                   $xOutfile, file handles on string buffers
+  #                   are not allowed.
+  #------------------------------------------------------
+
+
+  $oClient->diff($xPath1, $xPeg1, $xPath2);
+  $oClient->diff($xPath1, $xPeg1, $xPath2, $xPeg2, $bRecurse
+     , $aCmdLineOptions, $bIgnoreAncestry, $bIgnoreDeleted
+     , $xOutFile, $xErrFile, $oPool);
+
+     $oClient->diff1_1($aCmdLineOptions
+        , $xPath1, $xPeg1, $xPath2, $xPeg2, $bRecurse
+        , $bIgnoreAncestry, $bIgnoreDeleted, $xOutFile, $xErrFile
+        , $oPool);
+
+     $oClient->diff1_4($aCmdLineOptions
+        , $xPath1, $xPeg1, $xPath2, $xPeg2, $bRecurse
+        , $bIgnoreAncestry, $bIgnoreDeleted, $bDiffBinary
+        , $sHeaderEncoding, $xOutFile, $xErrFile
+        , $oPool);
+
+     $oClient->diff1_5($aCmdLineOptions
+        , $xPath1, $xPeg1, $xPath2, $xPeg2, $sRelativeToDir
+        , $iDepth, $bIgnoreAncestry, $bIgnoreDeleted, $bDiffBinary
+        , $sHeaderEncoding, $xOutFile, $xErrFile, $aChangeLists
+        , $oPool);
+
+     $oClient->diff1_6($aCmdLineOptions
+        , $xPath1, $xPeg1, $xPath2, $xPeg2, $sRelativeToDir
+        , $iDepth, $bIgnoreAncestry, $bIgnoreDeleted, $bDiffBinary
+        , $sHeaderEncoding, $xOutFile, $xErrFile, $aChangeLists
+        , $oPool);
+
+     $oClient->diff1_7($aCmdLineOptions
+        , $xPath1, $xPeg1, $xPath2, $xPeg2, $sRelativeToDir
+        , $iDepth, $bIgnoreAncestry, $bIgnoreDeleted
+        , $bShowCopiesAsAdds, $bDiffBinary, $bUseGitDiffFormat
+        , $sHeaderEncoding, $xOutFile, $xErrFile, $aChangeLists
+        , $oPool);
+
+
+  $oClient->merge($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc);
+  $oClient->merge($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+     , $bRecurse, $bIgnoreAncestry, $bForceDelete, $bDryRun, $oPool);
+
+     $oClient->merge1_1($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+        , $bRecurse, $bIgnoreAncestry, $bForceDelete, $bDryRun
+        , $oPool);
+
+     $oClient->merge1_4($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+        , $bRecurse, $bIgnoreAncestry, $bForceDelete, $bDryRun
+        , $aMergeOptions, $oPool);
+
+     $oClient->merge1_5($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+        , $iDepth, $bIgnoreAncestry, $bForceDelete, $bRecordOnly
+        , $bDryRun, $aMergeOptions, $oPool);
+
+     $oClient->merge1_6($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+        , $iDepth, $bIgnoreAncestry, $bForceDelete, $bRecordOnly
+        , $bDryRun, $aMergeOptions, $oPool);
+
+     $oClient->merge1_7($xPath1, $xPeg1, $xPath2, $xPeg2, $sWc
+        , $iDepth, $bIgnoreAncestry, $bForceDelete, $bRecordOnly
+        , $bDryRun, $bAllowMixedRev, $aMergeOptions, $oPool);
+
+=over
+
+=item diff
+
+Equivalent on the command line to C<svn diff>.
+
+Compares two different versions - this can be two versions in the
+central repository or a local repository and central repository
+version.
+
+Of the four initial parameters C<$xPath1>, C<$xPeg1>, C<$xPath2>,
+and C<$xPeg2>, all are required, but only the first, C<$xPath1>
+must be defined. The remainder may be passed C<undef> as a value.
+Undefined values will be defaulted as follows:
+
+* C<$xPeg1> will default to BASE
+
+* C<$sPath2> will default to $C<$sPath1>
+
+* C<$xPeg2>'s default depends on the value of the three previous
+  parameters (C<$xPath1>, C<$xPeg1>, and C<$xPath2>).
+
+If C<$sPath1 ne $sPath2>, then C<$xPeg2> defaults to C<$xPeg1>.
+Otherwise, if the two paths are the same, C<$xPeg2> defaults
+according to this table:
+
+     $xPeg1              $xPeg2
+     ------              ------
+     HEAD                WORKING
+     BASE                WORKING
+     COMMITTED           WORKING
+     PREV                COMMITTED
+     N                   N+1
+
+Versions of this method that do not have a C<$sOutputEncoding>
+parameter generate their output using the platform's character
+encoding (APR_LOCALE_CHARSET).
+
+For more documentation see
+
+* svn diff in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Diff.html
+
+* http://apr.apache.org/docs/apr/trunk/group___a_p_r___x_l_a_t_e.html
+
+=item merge
+
+Equivalent on the command line to C<svn merge>.
+
+Combine the changes from two different branches of development
+into a single set of changes and update or add files in the
+working copy path so that it reflects the result of the combined
+changes. Optionally also delete files in the working copy if
+they are not part of the final result of the merged changes.
+
+For more documentation see
+
+* svn merge in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Merge.html
+
+=back
+
+=head3 Revision properties
+
+  my $sValue = $oClient->getRevisionProperty($xRepos, $sProp);
+  my $sValue = $oClient->getRevisionProperty($xRepos, $sProp, $xPeg);
+
+
+  my $hProps = $oClient->getRevisionProperties($xRepos);
+  my $hProps = $oClient->getRevisionProperties($xRepos, $xPeg);
+
+
+  $iSetInRev = $oClient->revprop_set($xRepos, $sProp, $xPeg, $sValue);
+  $iSetInRev = $oClient->revprop_set($xRepos, $sProp, $xPeg, $sValue
+     , $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_set1_1($sProp, $sValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_set1_4($sProp, $sValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_set1_5($sProp, $sValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_set1_6($sProp, $sValue, $sOldValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_set1_7($sProp, $sValue, $sOldValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+
+  $iSetInRev = $oClient->revprop_delete($xRepos, $sProp);
+  $iSetInRev = $oClient->revprop_delete($xRepos, $sProp, $xPeg
+     , $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_delete1_1($sProp, $xRepos, $xPeg
+        , $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_delete1_4($sProp, $xRepos, $xPeg
+        , $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_delete1_5($sProp, $xRepos, $xPeg
+        , $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_delete1_6($sProp, $sOldValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+     $iSetInRev = $oClient->revprop_delete1_7($sProp, $sOldValue
+        , $xRepos, $xPeg, $bForce, $oPool);
+
+
+  ($hProps, $iSetInRev) = $oClient->revprop_list($xRepos);
+  ($hProps, $iSetInRev) = $oClient->revprop_list($xRepos, $xPeg
+     , $oPool);
+
+     # revprop_list1_1, etc have the same parameters
+
+
+  ($sValue, $iSetInRev) = $oClient->revprop_get($xRepos, $sProp);
+  ($sValue, $iSetInRev) = $oClient->revprop_get($xRepos, $sProp
+     , $xPeg, $oPool);
+
+     ($sValue, $iSetInRev) = $oClient->revprop_get1_1($sProp
+        , $xRepos, $xPeg, $oPool);
+
+     ($sValue, $iSetInRev) = $oClient->revprop_get1_4($sProp
+        , $xRepos, $xPeg, $oPool);
+
+     ($sValue, $iSetInRev) = $oClient->revprop_get1_5($sProp
+        , $xRepos, $xPeg, $oPool);
+
+     ($sValue, $iSetInRev) = $oClient->revprop_get1_6($sProp
+        , $xRepos, $xPeg, $oPool);
+
+     ($sValue, $iSetInRev) = $oClient->revprop_get1_7($sProp
+        , $xRepos, $xPeg, $oPool);
+
+=over
+
+=item revprop_delete
+
+Deletes a property set on the revision as a whole.
+
+Equivalent on the command line to C<svn propdel --revprop>.For more
+documentation see
+
+* svn propdel in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+=item revprop_get
+
+Equivalent on the command line to C<svn propget --revprop>.  For more
+documentation see
+
+* svn propget in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+
+=item revprop_list
+
+Equivalent on the command line to C<svn proplist --revprop>.  For more
+documentation see
+
+* svn proplist in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+=item revprop_set
+
+Adds or sets a property on the revision as a whole (rather than on a
+file or directory within the revision).  As this property is on the
+revision it can have no history.
+
+Equivalent on the command line to C<svn propset --revprop>.  For more
+documentation see
+
+* svn propset in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+=back
+
+=head3 Repository directory listings
+
+  #------------------------------------------------------
+  # $iFields
+  #
+  # $bFetchLocks    If true, fetches and passes an object storing
+  #                 information about locks to C<$crVisit> method
+  #                 passed to C<ls(...)> and C<ls4(...)>.
+  #
+  # $hEntries       a hash containing all the paths visited. The
+  #                 keys are path names. The values are svn_dirent_t
+  #                 objects - see list in the method definitions below
+  #                 for details.
+  #------------------------------------------------------
+
+  $aRelPaths = $oClient->getPathList($xPath);
+  $aRelPaths = $oClient->getPathList($xPath,$xPeg, $bRecurse, $oPool);
+
+
+  $oClient->list($xPath, $crVisit);
+  $oClient->list($xPath, $xPeg, $crVisit, $bRecurse, $oPool);
+
+     $hEntries = $oClient->ls1_1($xPath, $xPeg, $bRecurse, $oPool);
+
+        # Note: as of subversion 1_4, ls is deprecated and replaced
+        # by list
+
+     $oClient->list1_1($xPath, $xPeg, $bRecurse, $crVisit, $oPool);
+
+     $oClient->list1_4($xPath, $xPeg, $xRev, $bRecurse
+        , $iFields, $bFetchLocks, $crVisit, $oPool);
+
+     $oClient->list1_5($xPath, $xPeg, $xRev, $iDepth
+        , $iFields, $bFetchLocks, $crVisit, $oPool);
+
+     $oClient->list1_6($xPath, $xPeg, $xRev, $iDepth
+        , $iFields, $bFetchLocks, $crVisit, $oPool);
+
+     $oClient->list1_7($xPath, $xPeg, $xRev, $iDepth
+        , $iFields, $bFetchLocks, $crVisit, $oPool);
+
+In the listing above, one might note that there is no C<ls1_4> etc.
+This is because starting in subversion 1.4, subversion switched from
+a return value model to a visitor model and C<ls> was replaced with
+C<list>.  The C<list1_1> method above is provided for consistancies
+sake. It emulates the visitor interface by calling ls1_1 internally.
+
+=over
+
+=item list
+
+Visits a file or each member of a requested directory and calls a
+visitor function (C<$crVisit>).
+
+
+This method does nothing unless a visitor function is defined.  The
+C<$crVisit> function parameters depend on the API method used:
+
+   #------------------------------------------------------
+   # $sRelPath    - the path name relative to the requested
+   #                directory or the basename if the requested path
+   #                is a file.
+   #
+   # $oDirEntry     a svn_dirent_t object
+   #
+   # $sFullPath     the fully qualified path of $sRelPath
+   #
+   # $oLock         a _p_svn_lock_t object
+   #
+   # $oPool         the pool passed in to list
+   #------------------------------------------------------
+
+   # subversion 1.1-1.3 (list, list1_1)
+
+   sub myVisitor {
+     my ($sRelPath, $oDirEntry, $sFullPath, $oPool) = @_;
+
+   }
+
+   # subversion 1.4 and up (list1_4, etc)
+
+   sub myVisitor {
+     my ($sRelPath, $oDirEntry, $oLock, $sFullPath, $oPool) = @_;
+
+   }
+
+The information in C<$oDirEntry> isn't very human readable. It
+also uses a time format with a different offset and unit than the
+time units and offeset assumed by Perl core modules.  To convert
+dates to a form that is usable with Perl time routines in the
+Core and on CPAN, see L<SVN::Friendly::Dates|SVN::Friendly::Dates>.
+
+You can also use the routines listed in
+L</String representation of constants and objects>. Of particular
+help for the C<list> method might be C<getDirEntryString>.
+
+
+With the proper visitor function, this method is equivalent to
+C<svn list> on the command line. For more documentation see
+
+* svn list in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__List.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__dirent__t.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__lock__t.html
+
+* L<SVN::Core|SVN::Core>
+
+=item ls
+
+Returns an array reference containing one element for each path
+found within the directory. The keys of the hash are path names
+relative to the requested directory or the base name of the file,
+if the target of C<ls> is a file instead of a directory. The
+values are instances of C<svn_dirent_t>.
+
+See L</list> above for a discussion of helpful functions for
+extracting data from C<svn_dirent_t> and converting it to a more
+useful form.
+
+For more documentation see
+
+* svn list in L<http://svnbook.red-bean.com>
+
+* L<http://svn.collab.net/svn-doxygen/group__List.html>
+
+* L<http://svn.collab.net/svn-doxygen/structsvn__dirent__t.html>
+
+* L<SVN::Core|SVN::Core>
+
+=back
+
+=head3 Detailed information about individual paths
+
+  #------------------------------------------------------
+  # $xStart        starting revision number or logical name (i.e.
+  #                HEAD, BASE, COMMITTED, WORKING, PREV). It may
+  #                also be a timestamp string in ISO8601 time format.
+  #                Defaults to the earliest possible revision, i.e. 0
+  #
+  # $xEnd          ending revision number, date or logical name.
+  #                Defaults to the latest possible revision for
+  #                the selected, i.e. defaults to $xPeg
+  #
+  # $crVisit       code reference to a visitor function. See below
+  #                for details about each parameter
+  #
+  # $oDiffOptions  - reference to a  svn_diff_file_options_t object.
+  #                  This is an object storing vrious flags
+  #                  for configuring a diff method call
+  #
+  # $bChangedPaths  If true, the C<svn_log_entry> object passed to
+  #                 log's $crVisit function will include an array
+  #                 reference ontaining a svn_changed_path_t object,
+  #                 one for each and every path change (move,copy)
+  #                 for the target file.
+  #
+  # $bStrictNodeHistory If true, the log method will stop when it
+  #                 finds a node that was copied, essentially
+  #                 treating the copied version as the first version
+  #                 of a file.   If false, log(...) will list the
+  #                 entire history of the file, including the history
+  #                 of the file from which the file was copied.
+  #
+  # $iVisitLimit    0 if all items should be visited; the number of
+  #                 items to visit otherwise.
+  #
+  # $fhOut          File handle to which file contents should be
+  #                 dumped. Defaults to \*STDOUT
+  #
+  # $aNodes is an array of objects. The objects have two methods
+  #   ->node_name() returns the fully qualified path to the object
+  #   ->prop_hash() returns a hash where
+  #                 key=prop name, value=prop value
+  #
+  # $hValues is a hash where the key=fully qualified path name and
+  #    value=property value for that path
+  #    A hash rather than a simple value is returned in case
+  #    $xPath is a directory and the values of $sProp for several
+  #    different files is retrieved
+  #------------------------------------------------------
+
+
+  my $oInfo   = $oClient->getInfo($sPath);
+  my $oInfo   = $oClient->getInfo($sPath, $xPeg, $oPool);
+
+  my $sValue  = $oClient->getPathProperty($sPath, $sProp);
+  my $sValue  = $oClient->getPathProperty($sPath, $sProp, $xPeg);
+
+  my $hProps  = $oClient->getPathProperties($sPath);
+  my $hProps  = $oClient->getPathProperties($sPath, $xPeg);
+
+  my $sRepos  = $oClient->getRepositoryURL($sWc);
+  my $sRepos  = $oClient->getRepositoryURL($sWc, $oPool);
+
+  my $bLocked = $oClient->isLocked($sWc);
+  my $bLocked = $oClient->isLocked($sWc, $oPool);
+
+
+  $oClient->cat($xRepos, $fhOut);
+  $oClient->cat($xRepos, $xPeg, $fhOut, $oPool);
+
+     $oClient->cat1_1($fhOut, $xRepos, $xPeg, $oPool);
+
+     $oClient->cat1_4($fhOut, $xRepos, $xPeg, $xRev, $oPool);
+
+     $oClient->cat1_5($fhOut, $xRepos, $xPeg, $xRev, $oPool);
+
+     $oClient->cat1_6($fhOut, $xRepos, $xPeg, $xRev, $oPool);
+
+     $oClient->cat1_7($fhOut, $xRepos, $xPeg, $xRev, $oPool);
+
+
+  $oClient->blame($xRepos, $crVisit);
+  $oClient->blame($xRepos, $xStart, $xEnd, $crVisit, $oPool);
+
+     $oClient->blame1_1($xPath, $xStart, $xEnd, $crVisit, $oPool);
+
+     $oClient->blame1_4($xPath, $xPeg, $xStart, $xEnd
+        , $oDiffOptions, $bBlameBinary, $crVisit, $oPool);
+
+     $oClient->blame1_5($xPath, $xPeg, $xStart, $xEnd
+        , $oDiffOptions, $bBlameBinary, $bIncludeMergedRevisions
+        , $crVisit, $oPool);
+
+     $oClient->blame1_6($xPath, $xPeg, $xStart, $xEnd
+        , $oDiffOptions, $bBlameBinary, $bIncludeMergedRevisions
+        , $crVisit, $oPool);
+
+     $oClient->blame1_7($xPath, $xPeg, $xStart, $xEnd
+        , $oDiffOptions, $bBlameBinary, $bIncludeMergedRevisions
+        , $crVisit, $oPool);
+
+
+  my $hValues = $oClient->propget($xPath, $sProp);
+  my $hValues = $oClient->propget($xPath, $sProp, $xPeg
+     , $bRecurse, $oPool);
+
+     $hValues = $oClient->propget1_1($sProp, $xPath, $xPeg
+        , $bRecurse, $oPool);
+
+     $hValues = $oClient->propget1_4($sProp, $xPath, $xPeg, $xRev
+        , $bRecurse, $oPool);
+
+     ($hValues, $iFetchRev) = $oClient->propget1_5($sProp, $xPath
+        , $xPeg, $xRev, $iDepth, $aChangeLists, $oPool);
+
+     ($hValues, $iFetchRev) = $oClient->propget1_6($sProp, $xPath
+        , $xPeg, $xRev, $iDepth, $aChangeLists, $oPool);
+
+     ($hValues, $iFetchRev) = $oClient->propget1_7($sProp, $xPath
+        , $xPeg, $xRev, $iDepth, $aChangeLists, $oPool);
+
+
+  my $aNodes = $oClient->proplist($xPath);
+  my $aNodes = $oClient->proplist($xPath, $xPeg, $bRecurse, $oPool);
+
+     $aNodes = $oClient->proplist1_1($xPath, $xPeg, $bRecurse
+        , $oPool);
+
+     $aNodes = $oClient->proplist1_4($xPath, $xPeg, $xRev, $bRecurse
+        , $oPool);
+
+     $oClient->proplist1_5($xPath, $xPeg, $xRev, $iDepth
+        , $aChangeLists, $crVisit, $oPool);
+
+     $oClient->proplist1_6($xPath, $xPeg, $xRev, $iDepth
+        , $aChangeLists, $crVisit, $oPool);
+
+     $oClient->proplist1_7($xPath, $xPeg, $xRev, $iDepth
+        , $aChangeLists, $crVisit, $oPool);
+
+
+  $oClient->info($xPath, $crVisit);
+  $oClient->info($xPath, $xPeg, $xRev, $crVisit, $bRecurse, $oPool);
+
+     $oClient->info1_1($xPath, $xPeg, $xRev, $crVisit, $bRecurse
+        , $oPool);
+
+     $oClient->info1_4($xPath, $xPeg, $xRev, $crVisit, $bRecurse
+        , $oPool);
+
+     $oClient->info1_5($xPath, $xPeg, $xRev, $crVisit, $iDepth
+        , $aChangeLists, $oPool);
+
+     $oClient->info1_6($xPath, $xPeg, $xRev, $crVisit, $iDepth
+        , $aChangeLists, $oPool);
+
+     $oClient->info1_7($xPath, $xPeg, $xRev, $crVisit, $iDepth
+        , $aChangeLists, $oPool);
+
+
+  $oClient->log($xPaths, $crVisit);
+  $oClient->log($xPaths, $xStart, $xEnd, $crVisit, $bChangedPaths
+     , $bStrictNodeHistory, $oPool);
+
+     $oClient->log1_1($xPaths, $xStart, $xEnd, $bChangedPaths
+         , $bStrictNodeHistory, $crVisit, $oPool);
+
+     $oClient->log1_4($xPaths, $xPeg, $xStart, $xEnd, $iVisitLimit
+         , $bChangedPaths, $bStrictNodeHistory, $crVisit, $oPool);
+
+     $oClient->log1_5($xPaths, $xPeg, $xStart, $xEnd, $iVisitLimit
+         , $bChangedPaths, $bStrictNodeHistory
+         , $bIncludeMergedRevisions, $aRevProps, $crVisit, $oPool);
+
+     $oClient->log1_6($xPaths, $xPeg, $aRevRanges, $iVisitLimit
+         , $bChangedPaths, $bStrictNodeHistory
+         , $bIncludeMergedRevisions, $aRevProps, $crVisit, $oPool);
+
+     $oClient->log1_7($xPaths, $xPeg, $aRevRanges, $iVisitLimit
+         , $bChangedPaths, $bStrictNodeHistory
+         , $bIncludeMergedRevisions, $aRevProps, $crVisit, $oPool);
+
+=over
+
+=item blame
+
+Visits each line of  particular revision and exposes the author,
+date, and revision number where that line was added, removed, or
+last modified.
+
+This method doesn't actually do anything unless a visitor function
+is defined.  The C<$crVisit> parameter is a subroutine that is called
+once for each line in the file.  It expects the following parameters
+
+   # $iLine        the line number, starting at 0
+   # $iRevision    the revision number where the line came from
+   # $sAuthor      the author of that revision, and hence the line
+   # $sISO8601Time the time in ISO8601 format - i.e.
+   #                   YYYY-MM-DDTHH:MM:SS.uuuuuuZ
+   # $sLine        string containing the actual line content
+   # $oPool        the pool passed into blame(...)
+
+   sub myVisitor {
+     my ($iLine, $iRevision, $sAuthor,$sISO8601Time,$sLine,$oPool)=@_;
+   }
+
+
+With the proper visitor function, this method is equvalent to the
+command line C<svn blame>. For more documentation see
+
+* svn blame in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Blame.html
+
+=item cat
+
+Equivalent on the command line to C<svn cat>.
+
+Dumps the contents of a spectific version of a file. The file
+contents are sent to the stream C<$fhOut>. If C<$fhOut> is STDOUT,
+the output will go to the console, a file or another process
+depending on where STDOUT is directed. If the C<$fhOut> is a
+read-write stream, the Perl application can interact with the
+file contents, modifying or discarding them as desired.
+
+C<$fhOut> must, of course, be opened for writing so that subversion
+can dump the file contents to it.
+
+For more documentation see
+
+* svn cat in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Cat.html
+
+=item info
+
+Exposes the current state of a repository path using a visitor
+model.  With the appropriately defined visitor subroutine this method
+is equivalent to the C<svn info> command.
+
+Sample information exposed by this method include the currently
+requested revision; the last changed revision, date and author;
+whether a file or directory lives at that repository path; if a
+file, whether or not a lock is present.  Also exposed is information
+about that path's containing repository: the UUID and the root
+URL, and the URL required to reach that exact path within the
+repository. There is much more information. For full details, see
+the documentation on C<svn_info_t> in either L<SVN::Client> or the
+C-API.
+
+All of this information is stored in a C<svn_info_t> object that is
+passed to the visitor code reference which is called for each
+requested path:
+
+   #-----------------------------------------
+   # $sPath       working copy or repository path
+   # $oInfo       svn_info_t object
+
+   sub myVisitor {
+     my ($sPath, $oInfo, $oPool) = @_;
+   }
+
+If possible, subversion tries to retrieve this information locally
+without a call to the server.  In particular if both the C<$xPeg> and
+C<$xRev> parameters are undefined, information will be taken from
+the local working copy rather than from the central repository.
+
+Also be aware that some repositories can be accessed with multiple
+protocols (file, svn+ssh, http/web-dav). The URL will stored in the
+C<svn_info_t> will reflect the access protocol implied by the
+C<$xPath> parameter. If C<$xPath> is a working copy path, it will
+be whatever access protocol is being used by the working copy
+(see C<getRepositoryURL>).  If C<$xPath> is an actual URL, then its
+protocol will be used and influence the URLs of any visited paths.
+
+For more documentation see
+
+* svn info in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Info.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__info__t.html
+
+=item log
+
+Exposes information about the commit that was reponsible for
+changing a repository path (or set of paths). As with C<info>
+the information is exposed using a visitor pattern.  The
+visitor subroutine is called for each commit that affected the
+selected files.  Information about that commit is passed to
+the visitor routine via its parameter list.
+
+With the appropriate visitor routine, C<$crVisit>, this method is
+equivalent to the C<svn> command, C<svn log>.
+
+The data structures used to pass that information have changed
+durng the history of subversion. For subversion 1.1-1.4, the commit
+data is passed as separate parameters. Starting with subversion 1.5
+this data is wrapped up in an object and the object is passed to
+the visitor routine instead:
+
+    #--------------------------------------------
+    # $hChangedPaths   hash whose keys are every path committed in
+    #                  the revision and whose values are
+    #                  svn_log_changed_path_t structures. This
+    #                  will only be defined if info() is called with
+    #                  $bChangedPaths = true
+    #
+    # $iRev            the revision number
+    #
+    # $sAuthor         the user who committed the revision
+    #
+    # $sDate           the date of the revision
+    #
+    # $sMessage        the message of the revision
+    #
+    # $oLogEntry       an object with the following fields
+    #                  ->author*       - same as $sAuthor
+    #                  ->date*         - same as $sDate
+    #                  ->message*      - same as $sMessage
+    #                  ->revision      - same as $iRev
+    #                  ->changed_paths - same as $hChangedPaths
+    #                  ->revprops      - hash containing the revision
+    #                                    properties: key= prop name,
+    #                                    value = prop value
+    #                  ->has_children    - see svn_log_entry_t
+    #                                      documentation
+    #                  ->non_inheritable - see svn_log_entry_t
+    #                                      documentation
+    #
+    # $bChildren       true if message has children (huh?)
+    #
+
+    # subversion 1-4  (log1, log4)
+
+    sub myVisitor {
+       my ($hChangedPaths, $iRev, $sAuthor, $sDate
+          , $sMessage,$oPool)=@_;
+    }
+
+    # subversion 5 and beyond (log5 and up)
+
+    sub myVisitor {
+       my ($oLogEntry, $oPool) = @_;
+    }
+
+* Note: the subversion documentation is giving inconsistent
+information about the nature of the C<$oLogEntry> object. The log
+function documentation says that svn_log_entry_t has author,date,
+and message fields but the svn_log_entry_t header file says not.
+
+For more documentation see
+
+* svn log in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Log.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__log__entry__t.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__log__changed__path__t.html
+
+=item propget
+
+Equivalent on the command line to C<svn propget> without the
+C<--revprop> flag.
+
+This method may be passed either working copy paths or repository
+URLs. If C<$xPath> is a working copy path any legal revision id
+may be used. If the revision is a historical revision (anything other
+than 'WORKING' or C<undef>), subversion will silently translate the
+path to its repository URL equivalent and look up the property value
+in the repository.
+
+If C<$xPath> is a repository URL, then C<$xPeg> must be set to a
+historical revision. Otherwise it will fail.
+
+This method returns a hash reference. The keys of the hash reference
+are paths. The path depends on the C<$xPeg> revision. If the revision
+is historical, the keys will be repository URLs. If the revision is
+a working copy revision, the keys will be working copy paths.
+
+The values of the hash are the value of the requested property at that
+path.  If the property hash changed and the working copy revision was
+requested, the hash will contain the I<modified> value rather than
+the repository value. If you want the repository value prior to 
+modification, set C<$xPeg> to 'BASE'.  If you want the most recent
+value, even if it was recently set by some other committer or working
+copy, use 'HEAD'.
+
+For more documentation see
+
+* svn propget in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+=item proplist
+
+Equivalent on the command line to C<svn proplist> without the
+C<--revprop> flag.
+
+Both working and repository paths may be used with this method.
+However, unlike C<propget> this method will I<not> convert a working
+copy path to a URL.  Thus working copy paths may only be used for
+a working copy revision and repository paths may only be used for
+historical revisions.
+
+Prior to the 1.5 API, this method returns an array of
+C<svn_client_proplist_item_t> objects. These objects have two methods:
+
+* node_name() - a repository URL or working copy path. This matches
+  the path name passed in as a parameter. (see C<propget>).
+
+* prop_hash() - returns a hash whose keys are property names and whose
+  values are property values assigned to that path. If there are no
+  properties assigned to the node name, this hash will be C<undef>
+  rather than merely empty, i.e. C<{}>.
+
+Starting with the 1.5 API, this method no longer returns an array of
+node objects.  Instead, it exposes the property hashes for each node
+using a visitor pattern. The visitor method (C<$crVisit> parameter)
+expects the members of C<svn_client_proplist_item_t> (i.e. path,
+property hash) as parameters. As with the earlier versions of the
+C<proplist> method, C<$hProps> will be C<undef> if there are no
+properties assigned to the path.
+
+   sub {
+     my ($sPath, $hProps, $oPool) = @_;
+   }
+
+For more documentation see
+
+* svn proplist in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__svn__client__prop__funcs.html
+
+* http://svn.collab.net/svn-doxygen/structsvn__client__proplist__item__t.html
+
+=back
+
+=head3 Importing and exporting
+
+The C<import> method can be used to load files and directories from
+a non-working copy into the repository. To do the reverse,
+export repository files and directories to a plain old directory
+rather than a working copy, use the C<export> method.
+
+  #--------------------------------------
+  # $sFrom        a non-working copy/ non-repository path to the
+  #               file or directory tree that should be imported
+  #               into the repository
+  #
+  # $sTo          a non-working copy/ non-repository path to the
+  #               file or directory tree to which repository contents
+  #               should be exported.
+  #
+  # $sNativeEol   identifies the characters that should be used to
+  #               end lines when files are exported. Possible values
+  #               are "LF", "CR" or "CRLF". or undef
+  #
+  # $bSkipExternals  see Parameter List Notes and Conventions
+  #
+  # $oCommitInfo1  a svn_client_commit_info_t object
+  #
+  # $oCommitInfo2  a svn_commit_info_t object
+  #
+  #--------------------------------------
+
+
+  $oCommitInfo1 = $oClient->import($sLocal, $xRepos);
+  $oCommitInfo1 = $oClient->import($sLocal, $xRepos, $sComment
+     , $bRecurse, $oPool);
+
+     $oCommitInfo1 = $oClient->import1_1($sLocal, $xRepos, $sComment
+        , $bNonRecursive, $oPool);
+
+     $oCommitInfo2 = $oClient->import1_4($sLocal, $xRepos, $sComment
+        , $bNonRecursive, $bNoIgnore, $oPool);
+
+     $oCommitInfo2 = $oClient->import1_5($sLocal, $xRepos, $sComment
+        , $iDepth, $bNoIgnore, $bIgnoreUnknownNodeTypes, $hRevProp
+        , $oPool);
+
+     $oCommitInfo2 = $oClient->import1_6($sLocal, $xRepos, $sComment
+        , $iDepth, $bNoIgnore, $bIgnoreUnknownNodeTypes, $hRevProp
+        , $oPool);
+
+     $oClient->import1_7($sLocal, $xRepos, $sComment
+        , $iDepth, $bNoIgnore, $bIgnoreUnknownNodeTypes, $hRevProp
+        , $crCommit, $oPool);
+
+
+  $iRev = $oClient->export($xRepos, $xPeg, $sLocal, $bOverwrite
+     , $oPool);
+
+     $iRev = $oClient->export1_1($xRepos, $sLocal, $xPeg, $bOverwrite
+         , $sNativeEol, $oPool);
+
+     $oClient->export1_4($xRepos, $sLocal, $xPeg, $xRev
+        , $bOverwrite, $bSkipExternals, $bRecurse
+        , $sNativeEol, $oPool);
+
+     $oClient->export1_5($xRepos, $sLocal, $xPeg, $xRev
+        , $bOverwrite, $bSkipExternals, $iDepth
+        , $sNativeEol, $oPool);
+
+     $oClient->export1_6($xRepos, $sLocal, $xPeg, $xRev
+        , $bOverwrite, $bSkipExternals, $iDepth
+        , $sNativeEol, $oPool);
+
+     $oClient->export1_7($xRepos, $sLocal, $xPeg, $xRev
+        , $bOverwrite, $bSkipExternals, $bIgnoreKeywords, $iDepth
+        , $sNativeEol, $oPool);
+
+
+The methods are described below:
+
+=over
+
+=item export
+
+Extracts all the files and directories from a particular release
+and places them in a non-working copy directory.
+
+Equivalent on the command line to C<svn export>. For more
+documentation see
+
+* svn export in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Export.html
+
+=item import
+
+Add a file or the contents of a directory to the central repository.
+This method only adds files to the central repository.  It does not
+change the imported files into a local copy.  To get a local
+repository copy for those files, you must run C<checkout(...)>.
+
+Equivalent on the command line to C<svn import>. For more
+documentation see
+
+* svn import in L<http://svnbook.red-bean.com>
+
+* http://svn.collab.net/svn-doxygen/group__Import.html
+
+=back
+
+=head2 Parameter list conventions and notes
+
+=head3 Parameter names
+
+Usually the names of the parameters will be nearly identical to their
+C-API names.  In a few cases the names have been changed to something
+that (in the module author's opinion) more clearly represents the
+purpose of the flag.  Example:  C<svn_client_diff> has a parameter
+called C<ignore_content_type>.  However, the documentation explains
+that this actually means to force a diff even on binary files. In
+this API the parameter is named C<$bDiffBinary>.
+
+Unlike the C-API (and common Perl convention), parameter names use
+a modified hungarian notation. This is done to reduce the sheer
+number of words needed to explain the legal values of each parameter.
+There are just too many.
+
+The initial letters of each parameter name have the following
+meanings:
+
+* "x" means that the parameter can have more than one type of
+  data (x=?)
+
+* "s" means it is supposed to be a string
+
+* "i" means it is supposed to be an integer
+
+* "o" means it is a blessed reference (o=object)
+
+* "cr" means code reference
+
+* "fh" means file handle
+
+* "b" means it is supposed to be a boolean.
+
+=head3 Order of parameters
+
+Methods of C<SVN::Friendly::Client> come in two flavors: (a) methods
+with the standardized parameter order discussed below and
+(b) C-API methods which exactly follow the parameter order of the
+C-API even when it is irregular.
+
+A standard ordering of parameters is very important to making this
+API usable because parameter lists can be very long and hard to
+remember.  The C-API more or less follows a standard order but
+there are just enough exceptions to make it hard to work with.
+
+These ordering exceptions mostly seem to come from the natural
+growth of the C-API. The C<SVN::Friendly::Client> methods are not
+vulnerable to this source of exceptions because (a) the standardized
+methods limit their parameter list to those needed by Subversion 1.1
+function calls (b) C<SVN::Friendly::Client> has had the benefit of
+hindsight when deciding the possible parameters and their ordering.
+
+=head4 Methods with C-API parameter ordering
+
+Methods following the C-API parameter ordering are easily
+identifiable by their ending: they always end in the major_minor
+version number of the subversion release when they were the
+latest and greatest version of that method.  C<add1_4> and
+C<commit1_7> are examples of methods that follow the C-API
+parameter ordering.
+
+The C-API parameters follow the exact ordering of the C-API with
+the following additions and deletions:
+
+* an extra C<$sComment> parameter will be inserted after the
+  target parameters if the method can commit data to the repository.
+  The affected methods are:  C<commit>, C<copy>, C<delete>, C<import>
+  C<mkdir>, C<move>, C<propdel>, C<propset>.  This is done so
+  that applications that need to use post 1.1 capabilities don't
+  have to jump through hoops to set the log message to something
+  other than ''.
+
+* the client context parameter (C<svn_client_ctx_t> is always
+  omitted.  There is no need for this parameter in method calls
+  because it is automatically filled in by the object method.
+
+* the combination of callback + baton parameters is collapsed into
+  a single callback parameter that takes a code reference. SWIG
+  handles the conversion of the Perl subroutine into a C callback
+  + baton.
+
+* "OUT" parameters, i.e. pointer parameters meant to store return
+  values, are also omitted. The Perl SWIG bindings convert these
+  to actual return values. If there is more than one "OUT" parameter,
+  then a list of values will be returned.  The error code returned
+  by the C-API function is converted to an exception.
+
+=head4 Methods with standard parameter ordering
+
+Any method that does not end in major_minor uses the standard
+parameter ordering:
+
+  (1) targets
+  (2) comment
+  (3) visitor
+  (4) recursion depth/flag
+  (5) control parameters
+  (6) pool
+
+=over
+
+=item target parameters
+
+This may be one or several parameters depending on the operation
+and the kind of target it needs. If more than one piece of
+information is needed to identify a target they will be in the
+order (path propName peg rev) where "peg" is the peg revision
+(discussed below) and "rev" is the operational revision (also
+discussed below).
+
+If the list includes a source and destination, the source target
+identifiers will always precede the destination target.
+
+=item comment
+
+Operations that potentially commit changes to the repository may
+have a comment parameter.  This parameter always follows immediately
+after the targets.
+
+=item visitor code reference
+
+a code reference to a visitor routine.  Not all operations have
+this parameter, but the ones that do place this parameter directly
+after the targets. This parameter is usually named C<$crVisit>.
+
+=item directory depth
+
+Operations on directories often have a parameter to control how
+deeply the operation will descend into the depths of a directory.
+This parameter is usually named C<$bRecurse> prior to subversion 1.5
+and C<$iDepth> thereafter.
+
+=item control parameters
+
+These parameters vary from operation to operation. They all have
+defaults and can generally be ignored unless one needs to do
+something special with that operation.
+
+=item pool object
+
+A pool object to use for this operation in lieu of the client
+context's default pool. See L</Pool parameters> below for further
+discussion.
+
+=back
+
+=head3 Optional and default parameters
+
+=head4 When parameters can be omitted
+
+Except where noted you can omit any trailing parameters excepting
+path targets, i.e. the working copy or repository path on which
+the method operates.  This is true for both standardized and API
+methods.  To make this a bit clearer, all methods are listed
+documented with both their minimal and maximal parameter list.
+
+In addition, a few intermediate parameters may also be omitted,
+provided that a non-scalar follows immediately after the omitted
+parameters:
+
+* The parameter C<$xPeg> may be omitted, provided that the
+non-scalar parameter immediately after it in the parameter list is
+defined.
+
+* The parameter pair C<$xPeg, $xRev> may be omitted in full
+or in part whenever it is followed by a non-scalar parameter. When
+this pair is omitted (in part or in full), the non-scalar parameter
+I<must> be defined.
+
+* The parameter pair C<$xStart, $xEnd> may be omitted in full or
+in part. The two parameters are scalars and always comes before
+C<$oPool> (a non-scalar) so we can easily detect when it is omitted
+completely or in part.
+
+=head4 Values assigned to missing and undefined parameters
+
+The following defaults are used for missing or undefined parameters
+with both the C-API methods (xxxM_m) and methods with a standard
+parameter ordering.
+
+* Boolean parameters default to C<false>. The only exception to this
+  rule is the recursion flag (C<$bRecurse>) which always defaults to
+  true.
+
+* string parameters default to ''
+
+* integral parameters default to 0
+
+* array parameters default to []
+
+* hash parameters default to {}
+
+* output character encodings default to 'UTF-8'
+
+* C<$fhOut> defaults to \*STDOUT
+
+* C<$xPeg> defaults to HEAD on methods that take only repository
+  paths.  Defaults to WORKING on methods that operate on working
+  copy paths.
+
+* C<$xRev> always defaults to C<$xPeg>.
+
+* C<$sHeaderEncoding> "defaults" to C<undef> which lets the system
+  choose the preferred encoding.
+
+
+Exceptions will be noted below.
+
+=head3 Autoboxing and unboxing
+
+* any parameter that can take a reference to an array of paths can
+  also take a simple string. The string will be auto wrapped in an
+  array reference.
+
+* any object that stringifies into a file system path or URL can
+  be used as a parameter or an element in an array of paths.  Thus
+  one can use a C<URI> object, a L<Path::Class> object or any
+  object you write that overloads C<""> (see C<overload> in the
+  Perl documentation).
+
+=head3 Notes for specific parameter types
+
+=head4 Boolean parameters
+
+Use C<''> or C<0> when you want to set a parameter to C<false>.
+
+In a parameter list, C<undef> means use the default value. Do 
+B<not> use C<undef> to mean false.  If the default value happens
+to be true, C<undef> will result in the parameter being set to
+true, the exact opposite of what is intended.
+
+Boolean parameters default to C<false>. The only exception to this
+rule is the recursion flag (C<$bRecurse>) which always defaults to
+true.
+
+=head4 Character encoding: C<$sHeaderEncoding>
+
+String identifying the encoding (e.g. "UTF-8") of the diff output
+file header.  This is only used by subversion's internal diff
+implementation.  If the diff command is configured to use an external
+diff generator, this parameter will be ignored.
+
+Subversion uses the standard character encoding identifiers. For
+more information on legal values see:
+
+* L<http://www.iana.org/assignments/character-sets>.
+
+* L<http://www.sunsource.net/scdocs/SVNEncoding>
+
+This parameter defaults to "UTF-8" if no value is provided.
+
+
+=head4 Path parameters
+
+Although the repository can be edited directory, the normal practice
+is to make a working copy of the repository and edit that. That
+means that client methods have to be concerned about four different
+types of paths:
+
+* working copy root - the root directory of the working copy.
+  Typically this is the directory into which files were checked out.
+  Parameters that identify working copy roots must be strings.
+  The string may be a relative path (to the current directory),
+  a local file system path, or a file URL.
+
+* working copy path - This can be the root or any file or directory
+  within the root.  As with the root it may be a relative path,
+  a local file system path, or a file URL.
+
+* repository root - the URL used to contact the repository.
+
+* repository path - the path to any file or resource in the
+  repository.  It may be the URL or any path within the URL.
+
+Any URL path may be either a string or an object that stringifies
+into a URL (i.e. it overloads C<"">). There is no need to manually
+convert objects to strings.
+
+If you use a URL path and want to specify a peg revision, you may
+include that in the path as well by following the path name with
+"@Version", e.g. F<file:///svn/repo/Planning.txt@1> would get
+the version of Planning.txt that lived in revisions 1-50 in the
+previous section.  If the URL has a revision and it is passed to
+a method with a C<$xPeg> parameter, the peg parameter will default
+to the URL's version rather than its normal default.
+
+In addition, the Subversion libraries do not accept trailing '/' on
+paths and URL's.  You will need to strip any trailing '/' before
+passing it to the methods of these functions.
+
+=head4 Identifying repository contents (C<$xPeg>)
+
+Each repository file is identified by a pathname and a revision
+number.  When files get deleted and readded, sometimes the file
+is the same file, but sometimes it contains unrelated content and
+just happens to have the same name.  Thus "name" alone is ambiguous
+when we consider the entire history of a file name.
+
+The versions in a subversion repository identify snapshots of the
+entire repository contents rather than individual files in the
+repository. This isn't as inefficient as it sounds because snapshots
+usually store only the changes to the tree (which tend to be small)
+rather than a copy of the entire tree and all its contents.
+
+Thus revision 1 might contain Planning.txt, and so might revision
+100.  However, they may be planning for entirely different projects
+run by entirely different people.  Somewhere around revision 50,
+the maintainer of Planning.txt (1) was deleted.  No one remembered
+and a new manager came and also created a Planning.txt file somewhere
+around revision 80.  He or she clearly isn't going to care much
+about Planning.txt (1) and would be quite surprised if the history
+of his file included the work from the other manager.
+
+To prevent such unintended effects, pathnames are fully identified
+using both their name and the revisions in which they were live.
+Any of those revisions will do, so for example, we could refer to
+the first manager's "Planning.txt" with F<Planning.txt@1> or
+F<Planning.txt@50>.
+
+This id number is know as the peg revision. If it is missing from
+a file name, subversion assumes that you want the file that is
+currently alive in the HEAD revision (or newly added to the working
+copy, if it hasn't been committed yet) and not some version that was
+created and deleted long ago.  Many methods below have a C<$xPeg>
+parameter. You can safely leave this undefined unless you explicitly
+want to resurrect an older version of a file that has been deleted.
+
+The C<$xPeg> parameter may be a revision number, an ISO8601 date or
+a logical revision name. The logical revision names are:
+
+
+* 'BASE' - the revision being edited, in its pristine form, before
+  any changes in the working copy have been applied.
+
+* 'WORKING' - the revision being edited, including any changes in the
+   current working copy. (Note: this is not part of the standard
+   subversion documentation, neither at the end user nor C-API level.
+   It is allowed by SWIG as part of its svn_opt_revision_t parameter
+   handling.  See line 1172 in http://svn.apache.org/viewvc/subversion/trunk/subversion/bindings/swig/include/svn_types.swg and also the
+   notes on parameter types in C<SVN::Client>.
+
+* 'HEAD' - the most recently committed revision.  If no one else
+   is working on the same body of files, then this will be the
+   same as 'BASE'.  In multi-team development the revision being
+   edited in the working copy may be a few versions back from the
+   latest and greatest in the repository.
+
+* 'COMMITED' - the revision of the last committed change to the file.
+   Not every file changes in a revision, so sometimes the "COMMITTED"
+   revision is earlier than either the "HEAD" or 'BASE' revision.
+
+* 'PREV' - the revision immediately before the 'COMMITTED" revision.
+
+
+The default value for C<$xPeg> depends on the method.  Methods that
+can operate on working copy paths "default" to C<undef>.  Methods
+that operate only on repository paths default to "HEAD".
+
+=head4 Requested (Operational) revision (C<$xRev>)
+
+Newer versions of the Subversion API ask for two arguments: a peg
+revision (C<$xPeg>) and an operational revision (C<$xRev>).
+
+When two revision parameters are provided the first is the peg
+revision and the second is the operational revision. According to
+the subversion documentation the peg revision identifies which
+incarnation of a file you want and the operational revision identifes
+which version of that file you want to see.
+
+In practice, one rarely needs both revisions.  The peg revision
+can be any revision where the file was live, so if you want to see
+a particular version of the file, just set the peg revision to that
+particular version.
+
+The need for the second number arises in the following two
+circumstances:
+
+a) you don't know if the current version of the "Foo.pm" is the
+   same one you wrote 2 years ago or an entirely new file. To find
+   out, you set the operational revision to HEAD and the peg revision
+   to a date based revision rather than a revision number. If the
+   current incarnation of "Foo.pm" is something entirely different,
+   subversion will tell you that the older "Foo.pm" is not found
+   in HEAD, even though there is a file named "Foo.pm" in HEAD.
+
+b) you have some sort of tool needs to be very sure it is dealing
+   with a particular incarnation of a file whenever it asks HEAD
+   about the file. To keep things simple it permanently identifies
+   each file of interest by its name and the revision where it was
+   created. This tool then blindly inserts that creation revision
+   as the peg.  For the tool to find out what happened to the file
+   in HEAD or any other revision it needs a second revision
+   parameter.
+
+The C<$xRev> parameter may be assigned any value that the C<$xPeg>
+parameter can be (see above).
+
+Because peg and operational revisions so often are the same, the
+C<$xRev> parameter always defaults to C<$xPeg> if undefined or
+omitted.
+
+=head4 Memory pools
+
+Nearly every L<SVN::Friendly::Client|SVN::Friendly::Client> has a pool
+parameter. This parameter is completely optional.
+
+The pool parameter, when used, allows customized memory management
+of subversion operations.  Normally, each client context has its
+own private pool of memory that lives as long as the client context
+lives.  When the client context dies any memory its operations
+consumed die with it.
+
+In most cases that is sufficent to keep the amount of memory needed
+under control.However, in very long lived applications, the
+client context might live a very long time consuming ever more
+memory.  To prevent that one has two options:
+
+* periodically destroy and recreate the client object
+
+* for particularly heavy operations, create and pass a custom
+  pool as a parameter. The pool can be destroyed when the operation
+  completes.
+
+
+=head4 Externals (C<$bSkipExternals>)
+
+External resources are directories that are part of the
+working copy directory X but are stored outside of the central
+repository or from a different location within the current
+repository.
+
+The central repository does not manage the version history of these
+resources in any way.  However, the list of external resources can
+change from revision to revision. It is stored in the built-in
+directory property C<svn:externals>. For example, a project may
+link in the source code of a web app like bugzilla or mediawiki so
+that it is available as a local resource even though it does not
+manage the version history of either application.
+
+Certain actions, e.g. exporting, updating and status can be done
+optionally on external files.  The default is to try to process
+them, but this can be turned off if desired via this parameter.
+
+=head1 VERSION COMPATIBILITY
+
+See L<SVN::Friendly|SVN::Friendly>.
+
+=head1 CAVEATS
+
+This module has only been tested with SWIG bindings compiled for
+the 1.4 Subersion API. See ToDo list.
+
+In such a large manual page and module it is possible for typos
+and documentation oversites to creep in no matter how many times
+a document is proofread. If you see a mistake, please let the
+maintianer know so it can be corrected.
+
+=head1 KNOWN BUGS
+
+Due to some incompleteness in the SWIG bindings some of the
+subversion 1.4 API methods do not work properly: (have these been
+fixed in the newest set of SWIG bindings?)
+
+* C<commit1_4> - works, but returns an unusable object. The object's
+  package does not appear to have been imported into Perl
+
+* C<list1_4> - fails due to parameter mismatch. Visitor thunk does
+  not appear to be implemented
+
+* C<merge1_4> - fails if C<$aMergeOptions> is non-empty. Although
+  it is expecting an apr_array_header_t const * parameter, it rejects
+  a passed in Perl array.
+
+* C<status1_4> - fails due to parameter mismatch.  Visitor thunk does
+  not appear to be implemented
+
+* C<update1_4> - fails due to parameter mismatch.  parameter 1 does
+  not appear to have been converted to a return value.
+
+=head1 TO DO/ROADMAP
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.

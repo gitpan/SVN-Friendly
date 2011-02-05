@@ -1,0 +1,24 @@
+Build.PL
+inc/Test/New.pm
+inc/Test/Sandbox.pm
+lib/Exception/Lite.pm
+lib/Exception/Lite.pod
+lib/SVN/Friendly.pod
+lib/SVN/Friendly/Client.pm
+lib/SVN/Friendly/Client.pod
+lib/SVN/Friendly/Config.pm
+lib/SVN/Friendly/Config.pod
+lib/SVN/Friendly/Dates.pm
+lib/SVN/Friendly/Dates.pod
+lib/SVN/Friendly/Exceptions.pm
+lib/SVN/Friendly/Exceptions.pod
+lib/SVN/Friendly/Repos.pm
+lib/SVN/Friendly/Repos.pod
+lib/SVN/Friendly/Utils.pm
+MANIFEST			This list of files
+t/Exception/Lite.t
+t/SVN/Friendly/Client.t
+t/SVN/Friendly/Config.t
+t/SVN/Friendly/Dates.t
+t/SVN/Friendly/Repos.t
+META.yml

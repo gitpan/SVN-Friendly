@@ -1,0 +1,422 @@
+=head1 NAME
+
+SVN::Friendly - user friendly front end to Subversion bindings
+
+=head1 DESCRIPTION
+
+B<Svn::Friendly> presents the SWIG bindings for the Subversion API
+in a Perl friendly format.
+
+It was developed because the raw SWIG bindings (available on CPAN
+via L<Alien::SVN|>) requires a deep reading of the SVN C API
+documentation and a lot of research, trial and error to figure out
+how the various C API constructs and data types show up in the Perl
+interface.  This essentially meant that the Subversion Perl API
+was largely usable only to Perl programmers who
+also had a reading knowledge of C, familiarity with SWIG, and
+the time to spend doing the necessary research and testing.
+
+For an in depth discussion of how SVN::Friendly makes the Perl
+bindings to subversion more user friendly ,see
+L<SVN::Friendly::Client|SVN::Friendly::Client>.
+
+=head1 COMPONENTS
+
+Main modules corresponding to major subsystems in the subversion API:
+
+=over
+
+=item * L<SVN::Friendly::Client|SVN::Friendly::Client>
+
+Data and operations needed by a subversion client. A subversion
+client is responsible for extracting information from a repository,
+scheduling changes and synchronsizing working copies and repositories
+
+=item * L<SVN::Friendly::Config|SVN::Friendly::Config>
+
+Configuration information used by subversion clients and repositories.
+
+=item * L<SVN::Friendly::Repos|SVN::Friendly::Repos>
+
+Data and operations for administering a subversion repository.
+This module may be used at present to create repositories and
+retrieve basic information about the repository: root, uuid, hook
+file names, and so on.  This is only a small part of the repository
+features, so more work is needed.
+
+=back
+
+Utility files that may be of interest
+
+=over
+
+=item * L<SVN::Friendly::Exceptions|SVN::Friendly::Exceptions>
+
+stores exception class definitions used by C<SVN::Friendly> and
+provides a helper method for those needing to override the default
+exception handling mechanism.
+
+=item * L<SVN::Friendly::Dates|SVN::Friendly::Dates>
+
+Stores routines for converting apache dates into a format usable
+by Perl routines.
+
+=back
+
+For planned future developments, see L</ROADMAP>.
+
+=head1 DEPENDENCIES
+
+This distribution requires only two additional non-core packages.
+
+=over
+
+=item * Subversion's SWIG-Perl bindings.
+
+Debian users can get thse recompiled via the package F<libsvn-perl>.
+The stable version is currently 1.5 on lenny.
+
+If you have a compiler on your system, you can also get them via
+CPAN. Download the L<Alien::SVN|Alien::SVN> module. The CPAN
+version will work with the 1.6 API and below.  Finally, if you want
+the latest bleeding edge bindings, you can visit the Apache
+Foundation, download sources, and compile your own. See
+http://subversion.apache.org/source-code.html
+
+=item * L<Exception::Lite|Exception::Lite>
+
+A light weight exception handling class with smart stack tracing
+and localization support. This module is used to generate
+exceptions.  L<Exception::Lite|Exception::Lite> depends only on
+core modules.
+
+=back
+
+
+=head1 VERSION COMPATIBILITY
+
+L<SVN::Friendly|SVN::Friendly> is composed so as to be backwards
+compatbile with subversion 1.1 and will continue to be so.
+All methods without a major_minor suffix use API method calls that
+are compatible with subversion 1.1 binaries.
+
+To date, it is written to be forwards compatible up to
+subversion 1.7 and the intent is continue to add new releases as
+subversion does.
+
+However, ...
+
+You should not assume that downloading and installing
+B<SVN::Friendly> will automatically make a computer
+with subversion 1.1 installed start acting like subversion 1.7,
+or vice versa.
+
+The actual behavior of this distribution depends on three factors:
+
+* the version of L<Alien::SVN|Alien::SVN> you have installed
+
+* the subversion release running on your computer
+
+* the version of your working copy and repository
+
+On a particular computer accessing a particular repository, the
+features available to you will be the least of the four releases
+listed above (Alien::SVN, system subversion, working copy version,
+and repository version).
+
+B<SVN::Friendly> depends on the SWIG-Perl bindings
+developed by the Subversion team. The Perl binding prepare Perl
+programs for linking to the subversion binaries at runtime. They
+also define the symbols available for use in a Perl program. Your
+program can only recognize functions and constants from the API
+against which L<Alien::SVN|Alien::SVN> is compiled. If you try to
+use constants and methods from newer versions of Perl, C<strict>
+and C<warnings> will complain.
+
+At runtime, your Perl/Subversion application will link to the
+system subversion (the one you use on the command line) and use
+that to make function calls. This is true even with L<Alien::SVN|>
+which downloads the 1.6.12 bindings for the purpose of compiling
+the Perl bindings.  If your runtime system is older than 1.6, you
+will only be able to use the portion of the SWIG bindings that
+are appropriate for your I<runtime> version. Attempts to call
+functions belonging to later APIs will fail.
+
+The version of the working copy and the repository can also
+interfere with a Perl program. If you check out files using
+subversion 1.4, you can't necessarily check them back in with
+subversion 1.3.  This is because the working copy format changes
+from time to time. An earlier version of subversion can't be
+used to manipulate a working copy created with a later version.
+
+As for repositories, subversion is fairly good about making sure
+that an old version of subversion can read a repository created
+by a newer version and vice-versa. However, some features of the
+newer repository will be invisible to older clients.  For example,
+Checking data out of a 1.7 repository won't magically give
+subversion 1.3 access to changelists, patches, and other post 1.3
+features.
+
+=head1 CAVEATS
+
+The following caveats affect only methods ending in a major_minor
+version prefix.  For details, see the individual modules.
+
+=over
+
+=item *
+
+some of the 1.4 functionality does not have complete SWIG bindings
+and will generate exceptions. For details, see individual modules.
+
+=item *
+
+methods for the 1.5 API and up have not been tested.
+
+=back
+
+Additionally, this module was tested against Subversion bindings
+compiled for subversion 1.4.  It may be that later releases of
+the SWIG bindings will have introduced bugs into the 1.4 API. There
+is however an ample test suite to check for that. If this module
+installs for you via CPAN, you shuld be fairly safe even if you are
+using SWIG bindings compiled against a later API.
+
+Finally, in general, one should mention that no test suite is ever
+complete.  There is always the possibility that an untried
+combination of parameters will trigger a fault.
+
+If you detect any bugs, the maintainer would be grateful if you
+would report them via CPAN.  Many thanks in advance.
+
+=head1 KNOWN BUGS
+
+See individual modules.
+
+
+=head1 ROADMAP
+
+=over
+
+=item *
+
+test against subversion 1.5/1.6 API
+
+=item *
+
+expand implementation and documentation of repository
+administration subsystem.
+
+=back
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+Below is a review of subversion related resource on and off
+CPAN. This list was constructed in early February, 2011.
+
+=head2 Background information
+
+=begin html
+
+<ul>
+<li><p>
+  <a href="http://www.perlmonks.org/?node_id=738308">RFC: Automating
+  SVN with Perl</a> A a brief overview of the Subversion C API and its
+  various subsystems followed by a discussion of the various
+  subversion modules available as of Dec, 2009.</p></li>
+
+<li><p><a href="http://svnbook.red-bean.com/en/1.1/ch09.html">
+   Version control with subversion, Chapter 9</a> - comprehensive
+   guide to command line tools</p></li>
+
+<li><p><a href="http://svnbook.red-bean.com/en/1.1/ch08.html">
+   Version control with Subversion, Chapter 8</a> - overview of the APIs and various
+   topics of interest to developers.</li>
+
+<li><p>
+  <a href="http://svn.collab.net/svn-doxygen/index.html">Subversion
+  C-API documentation</a></p></li>
+
+<li><p>
+  <a href="http://svn.apache.org/viewvc/subversion/trunk/subversion/">
+  /subversion/trunk/subversion</a> - Subversion source code</p></li>
+
+<li><p><a href="http://svn.apache.org/viewvc/subversion/trunk/subversion/bindings/swig/">/subversion/trunk/subversion/bindings/swig</a> - 
+  Subversion-SWIG bindings - definition files and source code
+  for Perl and other languages</p></li>
+
+</ul>
+
+=end html
+
+=head2 Tools for subversion application developers
+
+=over
+
+=item Importing SWIG bindings
+
+* L<Alien::SVN|Alien::SVN> - the modules responsible for importing
+  the SWIG-Perl bindings for subversion. This class would not be
+  possible withut this module.
+
+
+=item Friendly interfaces to the SVN bindings
+
+* L<SVN::TXN::Props|SVN::TXN::Props> - extracts revision
+  properties and stores them in a hash for use in hook scripts
+
+* L<SVN::Simple|SVN::Simple> - a simplified Delta editor
+  for rolling your own commit process.
+
+=item Automation of command line interface
+
+* L<SVN::Agent|SVN::Agent> - wrapper for command line client (svn)
+
+* L<SVN::Class|SVN::Class> - wrapper for command line client (svn)
+
+* L<SVN::Look|SVN::Look> - wrapper for command line tool: svnlook
+
+* L<SVN::SVNLook|SVN::SVNLook> - wrapper for command line tool:
+  svnlook
+
+=item Components for use in repository hooks
+
+* L<SVN::Hooks|SVN::Hooks> - a framework for managing hooks
+  and defining hooks using reusable components.
+
+* L<SVN::Notify|SVN::Notify> - function that can be called from
+  a hook script. The routine monitors subversion activity and
+  sends emails to notify people of interesting events.
+
+* L<SVN::Notify::Config|SVN::Notify::Config> - configures
+  L<SVN::Notify|SVN::Notify>
+
+* L<SVN::Notify::Mirror|SVN::Notify::Mirror> - extension of
+  L<SVN::Notify|SVN::Notify> that uses
+  C<svn export> and C<rsync> or C<ssh> to
+  push the latest versions of repository files onto a webserver
+  or other resource using svn export
+
+* L<SVN::Notify::Snapshot|SVN::Notify::Snapshot> - exports a
+  snapshot of a subversion repository
+
+* L<SVN::Utils::ClientIP|SVN::Utils::ClientIP> - get client's IP
+  address in a subversion hook
+
+=back
+
+=head2 Tools for specific tasks
+
+=over
+
+=item Repository hook and access rights management
+
+* L<SVN::ACL|SVN::ACL> - configure user access - writes directly
+  to repository access configuration files without the assistance
+  of either subversion command line tools or SWIG bindings
+
+* L<SVN::Access|SVN::Access> - configure user access - writes directly
+  to repository access configuration files without the assistance
+  of either subversion command line tools or SWIG bindings
+
+* L<SVN::Hook|SVN::Hook> - a framework for install, enable,
+  disable, and testing hook scripts.
+
+=item Deployment, mirroring and working copy management
+
+* L<Git::SVNReplay|Git::SVNReplay> - replays Git commits into a
+  throwaway SVN repository using the command line client (svn).
+  Useful for integrating a git repository contents with tools
+  that only know how to speak to a subversion repository.
+
+* L<SVN::Mirror|SVN::Mirror> - mirror remote repository to a
+  local repository uses SWIG bindings.
+
+* L<SVN::Push|SVN::Push> - push changes from one respository
+  into another using SWIG bindings.
+
+* L<SVN::Pusher|SVN::Pusher> - push changes from one respository
+  into another using SWIG bindings.
+
+* L<SVN::S4|SVN::S4> - utilties for managing working copies, e.g.
+  mapping project URLs to project directories.  Uses SWIG bindings.
+
+* L<SVN::OpenSVN|WWW::OpenSVN> - fetches a subversion respoistory
+  dump from the open SVN project - uses neither SWIG nor command
+  line tools.
+
+* L<Dist::Zilla::Plugin::SvnObtain|Dist::Zilla::Plugin::SvnObtain>
+  - gets files from a subversion repository before building a
+  distribution using SWIG bindings
+
+* L<SVN::Deploy|SVN::Deploy> - building/deploying releases from
+  a repository using SWIG bindings.
+
+=item Repository content analysis
+
+* L<SVN::Churn|SVN::Churn> - generate graph for repository churn using
+  SWIG bindings.
+
+* L<SVN::Log|SVN::Log> - retrieves and parses commit logs using
+  SWIG bindings.
+
+* L<SVN::Log::Index|SVN::Log::Index> - builds an index on commit
+  logs using L<SVN::Log|SVN::Log>.
+
+* L<SVN::Log::Accounting|SVN::Log::Accounting> - tabulates
+  information from log files into reports using L<SVN::Log|SVN::Log>
+
+* L<App::SVN::Bisect|App::SVN::Bisect> - interactive tool for
+  finding which revision in a subversion repository contains
+  a particular change using the log subcommand of the command
+  line client (svn)
+
+* L<SVN::Dump|SVN::Dump> - parses dumpfile without use of
+  SWIG bindings or command line tools.
+
+* L<SVN::DumpReloc|SVN::DumpReloc> - parses dumpfile without
+  use of SWIG bindings or command line tools.
+
+* L<SVN::Dumpfile|SVN::Dumpfile> - parses dumpfile without
+  use of SWIG bindings or command line tools.
+
+* L<SVN::Dumpfilter|SVN::Dumpfilter> - parses dumpfile without
+  use of SWIG bindings or command line tools.
+
+* L<Parse::SVNDiff|Parse::SVNDiff> - parses and formats SVN's
+  binary diff output. What it uses to do this is not clear.
+  The source code is not visible via CPAN.
+
+=item Interactive editors and viewers
+
+* L<SVN::Web|SVN::Web> - a web interface to a subversion
+  repository. Uses SWIG bindings.
+
+* L<Catalyst::Model::SVN|Catalyst::Model::SVN> - Catalyst browser
+  for subversion repositories.  Uses SWIG bindings.
+
+* L<Padre::Plugin::SVN|Padre::Plugin::SVN> - SVN access for the
+  Padre editor. Uses command line client (svn).
+
+=back
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.

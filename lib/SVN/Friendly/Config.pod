@@ -1,0 +1,404 @@
+=head1 NAME
+
+SVN::Friendly::Config - User friendly access to Subversion
+configuration data.
+
+=head1 SYNOPSIS
+
+  use Config;
+
+  $oConfig = Svn::Friendly::Config->new();
+  $oConfig = Svn::Friendly::Config->new($sNative, $oPool);
+
+  #------------------------------------------------
+  # list categories, sections and properties
+  #------------------------------------------------
+
+  $aNames = $oConfig->getCategoryNames();
+
+  $bFound = $oConfig->hasSection($sCategory, $sSection);
+
+  $aNames = $oConfig->getSectionNames($sCategory);
+
+  $oConfig->visitSections($sCategory, $crVisit);
+
+  $oConfig->find_group($sCategory, $sItem, $sWildcardSection
+     , $oPool);
+
+  $aNames = $oConfig->getOptionNames($sCategory, $sSection);
+
+  $oConfig->visitOptions($sCategory, $sSection, $crVisit);
+
+
+  #------------------------------------------------
+  # getting configuration properties
+  #------------------------------------------------
+
+  $oConfig->get($sCategory, $sSection, $sOption);
+  $oConfig->get($sCategory, $sSection, $sOption, $xDefault);
+
+  $oConfig->get_bool($sCategory, $sSection, $sOption);
+  $oConfig->get_bool($sCategory, $sSection, $sOption
+     , $xBoolishDefault);
+
+  $oConfig->get_server_setting($sCategory, sServerGroup, $sOption);
+  $oConfig->get_server_setting($sCategory, $sServerGroup, $sOption
+    , $xDefault);
+
+  $oConfig->get_server_setting_int($sCategory, $sServerGroup
+     , $sOption);
+  $oConfig->get_server_setting_int($sCategory, $sServerGroup
+     , $sOption, $xDefault);
+
+
+  #------------------------------------------------
+  # setting configuration properties
+  #------------------------------------------------
+
+  $oConfig->merge($sCategory, $sFile);
+  $oConfig->merge($sCategory, $sFile, $bMustExist);
+
+  $oConfig->read($sCategory, $sFile);
+  $oConfig->read($sCategory, $sFile, $bMustExist, $oPool);
+
+  $oConfig->set($sCategory, $sSection, $sOption, $xValue);
+
+  $oConfig->set_bool($sCategory, $sSection, $sOption, $xBoolishValue);
+
+  #------------------------------------------------
+  # Get svn_config_t objects and hashes
+  #------------------------------------------------
+
+  $oCategory = $oConfig->getCategory($sCategory);
+  $hCategories xrw= $oConfig->getCategoryHash();
+
+
+=head1 DESCRIPTION
+
+This class provides a wrapper around the subversion configuration
+hash and also emulates certain functions that are either missing
+from subversion 1.1, as well as later methods that have incomplete
+SWIG binding definitions (see L</CAVEATS>).
+
+=head2 Relationship to the C-API
+
+As with L<SVN::Friendly::Client|SVN::Friendly::Client> the methods
+defined for this class try to strike a balance between closely
+following the C-API and usability.  Once again there are two
+families of methods: those ending in a major_minor version number
+and those without.
+
+The major_minor version number methods are taken from the list
+of config methods in svn_conifg.h (see
+  http://svn.collab.net/svn-doxygen/svn__config_8h.html).
+
+Because this object wraps a hash containing C<svn_config_t> objects
+rather than a single object, some minor adjustments have been made
+to the funciton definitions:
+
+=over
+
+=item *
+
+All methods get an extra "category" parameter that identifies
+which C<svn_config_t> object we want to operate on.  This parameter
+is nothing more than a key name stored in the configuration hash.
+
+=back
+
+For more information about method naming conventions, please see
+L<SVN::Friendly::Client|SVN::Friendly::Client>
+
+=head2 Terminology
+
+In this documentation C<svn_config_t> objects are called category
+objects because they are mapped to category names in the configuration
+hash. This naming also makes clear the distinction between the
+configuration as a whole stored in a hash, and an individual category
+with in that configuration stored in a C<svn_config_t> object.
+
+=head2 Parameter naming conventions
+
+
+For more information about parameter naming conventions, ordering,
+rules for defaulting and omitting parameters, etc, please see
+See L<SVN::Friendly::Client
+     |SVN::Friendly::Client/Parameter list conventions and notes>.
+
+=head1 USAGE
+
+The configuration object is stores all the configuration information
+used by subversion.  The configuration information is stored as a
+set of name-value pairs.  Name-value pairs, also known as options,
+are grouped into sections and sections are grouped into categories.
+
+To access any value, you need to know the categoory, section,
+and option names.  Hence the methods for this class fall into
+two major groupings: (a) listing out the available categories,
+sections, and options (b) retrieving and setting values for
+those options.
+
+The major_minor version number methods are taken from the list
+of config methods in svn_conifg.h (see
+  http://svn.collab.net/svn-doxygen/svn__config_8h.html).
+
+names.
+
+=head2 Creating a configuration object
+
+  # $sDir - local file system path to a configuration directory
+
+  $oConfig = Svn::Friendly::Config->new();
+  $oConfig = Svn::Friendly::Config->new($sDir, $oPool);
+
+
+=head2 List configuration sections and properties
+
+  $aNames = $oConfig->getCategoryNames();
+
+
+  $bFound = $oConfig->hasSection($sCategory, $sSection);
+
+  $aNames = $oConfig->getSectionNames($sCategory);
+
+  $oConfig->visitSections($sCategory, $crVisit);
+
+     $oConfig->enumerate_sections($crVisit);
+     $oConfig->enumerate_sections1_1($crVisit);
+     $oConfig->enumerate_sections1_4($crVisit, $oPool);
+     $oConfig->enumerate_sections1_5($crVisit, $oPool);
+     $oConfig->enumerate_sections1_6($crVisit, $oPool);
+     $oConfig->enumerate_sections1_7($crVisit, $oPool);
+
+  $oConfig->find_group($sCategory, $sItem, $sWildcardSection
+     , $oPool);
+
+     # find_group1_1, etc have the same parameters
+
+  $aNames = $oConfig->getOptionNames($sCategory, $sSection);
+
+  $oConfig->visitOptions($sCategory, $sSection, $crVisit);
+
+     $oConfig->enumerate($crVisit, $sSection);
+     $oConfig->enumerate1_1($crVisit, $sSection);
+     $oConfig->enumerate1_4($crVisit, $sSection, $oPool);
+     $oConfig->enumerate1_5($crVisit, $sSection, $oPool);
+     $oConfig->enumerate1_6($crVisit, $sSection, $oPool);
+     $oConfig->enumerate1_7($crVisit, $sSection, $oPool);
+
+=over
+
+=item enumerate
+
+This method visits each option name-value pair within a section
+and passes it to the routine stored in the C<$crVisit> parameter.
+This routine should be defined to expect the parameters below;
+
+   sub visitOption {
+     my ($sOption, $sValue) = @_;
+
+   }
+
+=item enumerate_sections
+
+This method visits each section name within a configuration object
+and passes it to the routine stored in the C<$crVisit> parameter.
+This routine should be defined to expect the parameters below;
+
+   sub visitSection {
+     my ($sSection) = @_;
+   }
+
+=item find_group
+
+Looks up C<$sItem> in a wildcard section named C<$sWildcardSection>
+and returns the option name associated with the matching wildcard.
+
+A wildcard section is a section where each option is set to a
+comma delimited list of wildcard expressions. This method searches
+through all the wildcard expressions until it finds one that matches.
+When it finds a match it returns the option name associated with
+that wildcard expression.
+
+This method is named after one of the original uses of this method:
+finding the configuration section for a server. In that case the
+wildcard section was named "groups",  the option names were the
+names of sections storing server configuration information. The
+wildcards mapped server names to the section responsible for
+configuring them:
+
+  [groups]
+   perl = *.perl.org
+   collabnet = svn.collab.net
+
+  [perl]
+   ~
+
+  [collabnet]
+  ~
+
+
+=back
+
+
+=head2 Getting and setting configuration values
+
+  #------------------------------------------------
+  # get configuration properties
+  #------------------------------------------------
+
+  $oConfig->get($sCategory, $sSection, $sOption);
+  $oConfig->get($sCategory, $sSection, $sOption, $xDefault);
+
+     # get1_1, etc have the same parameters
+
+  $oConfig->get_bool($sCategory, $sSection, $sOption);
+  $oConfig->get_bool($sCategory, $sSection, $sOption
+     , $xBoolishDefault);
+
+     # get_bool1_1, etc have the same parameters
+
+  $oConfig->get_server_setting($sCategory, sServerGroup, $sOption);
+  $oConfig->get_server_setting($sCategory, $sServerGroup, $sOption
+    , $xDefault);
+
+     # get_get_server_setting1_1, etc have the same parameters
+
+  $oConfig->get_server_setting_int($sCategory, $sServerGroup
+     , $sOption);
+  $oConfig->get_server_setting_int($sCategory, $sServerGroup
+     , $sOption, $xDefault);
+
+     # get_get_server_setting_int1_1, etc have the same parameters
+
+  #------------------------------------------------
+  # set configuration properties
+  #------------------------------------------------
+
+  $oConfig->merge($sCategory, $sFile);
+  $oConfig->merge($sCategory, $sFile, $bMustExist);
+
+     # merge1_1, etc have the same parameters
+
+  $oConfig->read($sCategory, $sFile);
+  $oConfig->read($sCategory, $sFile, $bMustExist, $oPool);
+
+     # read1_1, etc have the same parameters
+
+  $oConfig->set($sCategory, $sSection, $sOption, $xValue);
+
+     # set1_1, etc have the same parameters
+
+  $oConfig->set_bool($sCategory, $sSection, $sOption, $xBoolishValue);
+
+     # set1_1, etc have the same parameters
+
+=head2 Accessing the svn_config_t object
+
+If you want to work with the raw API and need the svn_config_t
+object you can access that through this method:
+
+  # $oCategory is a svn_config_t object
+
+  $oCategory   = $oConfig->getCategory($sCategory);
+  $hCategories xrw= $oConfig->getCategoryHash();
+
+
+=over
+
+=item get
+
+Retrieves the value of an option.
+
+=item get_bool
+
+Retrieves the value of an option and converts it to a boolean. The
+default value, if provided, must be set to any of the following:
+C<"true","false","on","off","yes","no","1","0">.
+Case does not matter.  If no value is provided C<$xBoolishDefault>
+defaults to false (0).
+
+=item get_sever_setting
+
+Retrieves a setting from one of the groups retrieved by 
+C<find_group>
+
+=item get_server_setting_int
+
+=item merge
+
+Reads in property settings from the file C<$sFile> and merges them
+with existing property settings for category C<$sCategory>.  By
+merging we mean that existing option values will be overwritten
+by option values in the file and new ones from the file will be
+added.
+
+=item read
+
+Reloads the property settings for category C<$sCategory> and sets
+them to those stored in C<$sFile>.
+
+=item set
+
+Sets an option.
+
+=item set_bool
+
+Sets an option to a boolean value.  C<$xBoolishValue> may be any
+of the following: C<"true","false","on","off","yes","no","1","0">.
+Case does not matter.
+
+=back
+
+=head1 VERSION COMPATIBILITY
+
+See L<SVN::Friendly|SVN::Friendly>.
+
+=head1 CAVEATS
+
+=head1 KNOWN BUGS
+
+In the 1.4.6 release of L<Alien::SVN|Alien::SVN> the following
+methods will not work, presumably because of missing elements in
+their SWIG binding definition:
+
+* C<enumerate_sections> - the callbacks needed by this method do
+  not appear to have a thunk defined. You can use C<visitSections>
+  instead, which serves much the same purpose.
+
+* C<enumerate1_4> and later - the callback thunk needed by the later
+  versions of this method doesn't have a thunk defined.
+
+
+=head1 TO DO/ROADMAP
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+

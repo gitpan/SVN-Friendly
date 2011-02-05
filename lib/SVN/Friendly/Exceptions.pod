@@ -1,0 +1,95 @@
+=head1 NAME
+
+SVN::Friendly::Exceptions - Exception handling for the Subversion API
+
+=head1 SYNOPSIS
+
+   use SVN::Friendly::Exceptions qw(makeErrorHandler);
+
+   sub myWonderfulSubversionRoutine {
+
+     # define a custom handler
+
+     my $crCustom = sub {
+       my ($oSwigErr) = @_;
+       if ( ... discard conditions...) {
+         # exception will be ignored and processing will continue
+         return 1;
+       } elsif (... pass through conditions ...)  {
+         # exception will be handled by default error handler
+         return 0;
+       } else {
+         # rethrow -or- manufacture own exception and die
+       }
+     }
+
+     # temporarily install a custom handler for your subvrsion
+     # calls
+
+     local $SVN::Error::handler = makeErrorHandler($crCustom);
+
+     # make some subversion API calls
+  }
+
+=head1 DESCRIPTION
+
+This class defines tools for taking control over subversion's error
+handling.
+
+In the C-API errors are handled by return values. The subversion Perl
+bindings use return values to return actual values. Errors and
+exceptions are handled via an error handling hook.
+
+By default, this hook simply dies when an error or exception is
+found. You can change that behavior by setting C<$SVN::Error::handler>
+to the code reference of a subroutine of your choice.
+
+In most cases you will only want to change the behvior for a small
+subset of exceptions. If this is the case you can use
+C<makeErrorHandler> to define a custom routine. This routine takes
+a single parameter, the swig error.  You can choose to discard
+the exception, pass it on to the default handler, or even throw your
+own exception.
+
+=head1 VERSION COMPATIBILITY
+
+See L<SVN::Friendly|SVN::Friendly>.
+
+=head1 CAVEATS
+
+None to date.
+
+=head1 KNOWN BUGS
+
+None to date.
+
+=head1 TO DO/ROADMAP
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 VOLUNTEERS
+
+If anyone would like to be involved in testing or expanding the
+user friendly interface, please contact the maintainer.
+
+Feedback on the documentation, bugs, usability, or additional
+features desired is welcome.  Time and person-power permitting
+the most commonly requested features will be implemented.
+
+=head1 SEE ALSO
+
+See L<SVN::Friendly|SVN::Friendly>
+
+=head1 AUTHOR
+
+Elizabeth Grace Frank-Backman
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008-2011 Elizabeth Grace Frank-Backman. All rights
+reserved.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
