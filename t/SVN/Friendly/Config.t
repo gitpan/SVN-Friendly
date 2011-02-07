@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 613;
+use Test::More tests => 646;
 
 #------------------------------------------------------------------
 
@@ -29,6 +29,7 @@ use Test::Sandbox qw(makeSandbox);
 
 my $SANDBOX_CLASS = 'Test::Sandbox';
 my $SANDBOX = $SANDBOX_CLASS->new($TEST_CLASS);
+my $EMPTY_FILE = $SANDBOX->addFile();
 
 #==================================================================
 # TEST SUITES
@@ -150,7 +151,7 @@ sub okEnumerate {
   @aGotOptions=();
   $oConfig->visitOptions($sCategory, $sSection, $crVisit);
   is_deeply(\@aGotOptions, $aOptions
-            , "$sName: visitSections($sCategory,$sSection)");
+            , "$sName: visitOptions($sCategory,$sSection)");
 }
 
 #------------------------------------------------------------------
@@ -158,6 +159,10 @@ sub okEnumerate {
 sub okEnumerate_sections {
   my ($sName, $oConfig, $sCategory, $aSections) = @_;
   my @aGotSections;
+
+  # Note: in 1.5 undef seems to be passed as a section name from
+  # time to time. Not sure why but we need to make ure we chck
+  # for it.
   my $crVisit = sub { push @aGotSections, $_[0] };
 
   my @aEnumerateSections
@@ -168,6 +173,8 @@ sub okEnumerate_sections {
       , sub { $oConfig->enumerate_sections1_6($sCategory, $crVisit) }
       , sub { $oConfig->enumerate_sections1_7($sCategory, $crVisit) }
       );
+
+  $aSections = [ sort @$aSections ];
 
   for my $i (0..$WC_LAST_IDX) {
     my $bVerify = 1;
@@ -191,11 +198,11 @@ sub okEnumerate_sections {
         or do { warn "$sTest - warning: $@"; $bVerify = 0; };
       next unless $bVerify;
 
-      is_deeply(\@aGotSections, $aSections, $sTest);
+      is_deeply([ sort @aGotSections], $aSections, $sTest);
     }
   }
 
-  is_deeply($oConfig->getSectionNames($sCategory), $aSections
+  is_deeply([ sort @{$oConfig->getSectionNames($sCategory)} ], $aSections
             , "$sName: getSectionNames($sCategory)");
 
   @aGotSections=();
@@ -492,8 +499,17 @@ sub testEmptyConfig {
    , \@SVN::Friendly::Config::CATEGORIES, "$sName: getCategoryNames");
 
   for my $sCategory (@SVN::Friendly::Config::CATEGORIES) {
+
+    # force an empty configuration - depending on the subversion release
+    # and possibly the OS, subversion may be pre-configured with some
+    # data.
+
+    $oConfig->read($sCategory, $EMPTY_FILE);
     okEnumerate_sections($sName, $oConfig, $sCategory => []);
     for my $sSection (@SVN::Friendly::Config::SECTIONS) {
+      # tunnels has very different content between 1.4 and 1.5, so just
+      # skip it.
+      #next if $sSection eq $SVN::Core::CONFIG_SECTION_TUNNELS;
       okHasSection($sName, $oConfig, $sCategory, $sSection => 0);
       okEnumerate($sName, $oConfig, $sCategory, $sSection => []);
     }
@@ -508,8 +524,8 @@ sub testEmptyConfig {
   my $hProps = { groups => { perl => '*.perl.org'
                              , apache => '*.apache.org'
                            }
-               , xxx => { section1 => '*.x.y.z'
-                        , section2 => '1.2.3.*'
+               , xxx => { opt1 => '*.x.y.z'
+                        , opt2 => '1.2.3.*'
                         }
                };
 
@@ -517,10 +533,17 @@ sub testEmptyConfig {
 
   okRead($sName, $oConfig, $sCategory, [1], undef, {});
   okRead($sName, $oConfig, $sCategory, [], $hProps, $hProps);
+  okHasSection($sName, $oConfig, $sCategory, 'groups', => 1);
+  okHasSection($sName, $oConfig, $sCategory, 'xxx', => 1);
+
+  # KNOWN_BUG-non-standard sections not found when we enumerate sections
+  # - enumerate_sections is not defined in the API so we have to fake it
+  my $aExpected = $SKIP_SWIG_BUGS ? ['groups'] : [qw(groups xxxx)];
+  okEnumerate_sections($sName, $oConfig, $sCategory => $aExpected);
 
   # does merge work?
   my $hChanges = { groups => { google => '*.google.com' }
-                   , xxx => { section1 => '*.a.b.c' }
+                   , xxx => { opt1 => '*.a.b.c' }
                    , yyy => { mary => 'lamb'
                               , boPeep => 'sheep'
                             }
@@ -529,8 +552,8 @@ sub testEmptyConfig {
   $hProps->{groups}        = { %{$hProps->{groups}}
                               , %{$hChanges->{groups}}
                              };
-  $hProps->{xxx}{section1} = $hChanges->{xxx}{section1};
-  $hProps->{yyy}           = $hChanges->{yyy};
+  $hProps->{xxx}{opt1} = $hChanges->{xxx}{opt1};
+  $hProps->{yyy}       = $hChanges->{yyy};
 
   okMerge($sName, $oConfig, $sCategory, [1], undef, {});
   okMerge($sName, $oConfig, $sCategory, [], $hChanges, $hProps);
@@ -542,7 +565,7 @@ sub testEmptyConfig {
   okFind_group($sName, $oConfig, $sCategory
                , 'perldoc.perl.org', undef, 'perl');
   okFind_group($sName, $oConfig, $sCategory
-               , '1.2.3.4', 'xxx', 'section2');
+               , '1.2.3.4', 'xxx', 'opt2');
 
   return $oConfig;
 }

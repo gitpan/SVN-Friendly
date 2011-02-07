@@ -16,7 +16,10 @@ my $EXCEPTIONS = 'SVN::Friendly::Exceptions';
 # fill in missing constants
 
 {
-  package SVN::Core;
+  # this 2 line wierdness is needed to keep Module::Build from adding
+  # this package to the META.yaml provides list
+  package
+    SVN::Core;
   our $CONFIG_SECTION_AUTOPROPS = 'auto-props';
 }
 
@@ -194,7 +197,7 @@ sub getCategoryNames {
 sub getOptionNames {
   my ($self, $xCategory, $sSection) = @_;
   my @aOptions;
-  my $crVisit = sub { push @aOptions, $_[0]; };
+  my $crVisit = sub { push @aOptions, $_[0]};
   $self->enumerate($xCategory, $sSection, $crVisit);
   return \@aOptions;
 }
@@ -205,6 +208,7 @@ sub getSectionNames {
   my ($self, $xCategory) = @_;
 
   my @aSections;
+
   my $crVisit = sub { push @aSections, $_[0]; };
   $self->visitSections($xCategory, $crVisit);
   return \@aSections;
@@ -370,7 +374,7 @@ sub visitSections {
 
   foreach my $sSection (@SECTIONS) {
     next unless $self->hasSection($oCategory, $sSection);
-    $crVisit->($_);
+    $crVisit->($sSection);
   }
 }
 

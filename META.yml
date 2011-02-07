@@ -1,10 +1,12 @@
 ---
 name: SVN-Friendly
-version: 0.999_001
+version: 0.999_002
 author:
   - Elizabeth Grace Frank-Backman
 abstract: user friendly front end to Subversion bindings
 license: perl
+resources:
+  license: http://dev.perl.org/licenses/
 requires:
   Exception::Lite: 0
   SVN::Client: 0
@@ -12,14 +14,6 @@ requires:
   SVN::Wc: 0
   perl: '>= 5.8.8'
 provides:
-  DB:
-    file: lib/Exception/Lite.pm
-  Exception::Lite:
-    file: lib/Exception/Lite.pm
-  SVN::Core:
-    file: lib/SVN/Friendly/Config.pm
-  SVN::Depth:
-    file: lib/SVN/Friendly/Client.pm
   SVN::Friendly::Client:
     file: lib/SVN/Friendly/Client.pm
   SVN::Friendly::Config:
@@ -28,14 +22,11 @@ provides:
     file: lib/SVN/Friendly/Dates.pm
   SVN::Friendly::Exceptions:
     file: lib/SVN/Friendly/Exceptions.pm
-  SVN::Friendly::List::Fields:
-    file: lib/SVN/Friendly/Client.pm
   SVN::Friendly::Repos:
     file: lib/SVN/Friendly/Repos.pm
   SVN::Friendly::Utils:
     file: lib/SVN/Friendly/Utils.pm
-  SVN::Wc::Notify::Action:
-    file: lib/SVN/Friendly/Client.pm
-  SVN::_Core:
-    file: lib/SVN/Friendly/Client.pm
-generated_by: Module::Build version 0.26
+generated_by: Module::Build version 0.280801
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

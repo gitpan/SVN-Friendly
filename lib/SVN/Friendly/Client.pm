@@ -31,7 +31,10 @@ my $EXCEPTIONS = 'SVN::Friendly::Exceptions';
 #--------------------------------------------------------------------
 
 {
-  package SVN::Friendly::List::Fields;
+  # this 2 line wierdness is needed to keep Module::Build from adding
+  # this package to the META.yaml provides list
+  package
+    SVN::Friendly::List::Fields;
   use SVN::Base qw(Core SVN_DIRENT_);
   #for some reason this didn't make it into the SWIG bindings,
   #not at least, the version packaged for Debian-Etch.
@@ -39,15 +42,34 @@ my $EXCEPTIONS = 'SVN::Friendly::Exceptions';
 }
 
 {
-  package SVN::Wc::Notify::Action;
+  # this 2 line wierdness is needed to keep Module::Build from adding
+  # this package to the META.yaml provides list
+  package
+    SVN::Wc::Notify::Action;
   our $locked = $SVN::Wc::notify_locked;
   our $unlocked = $SVN::Wc::notify_unlocked;
   our $failed_lock = $SVN::Wc::notify_failed_lock;
   our $failed_unlock = $SVN::Wc::notify_failed_unlock;
+
+  # these constants seem not be be defined in the 1.5 bindings
+  # changeliset_set doesn't get defined even in wc
+
+  our $exists = $SVN::Wc::notify_exists;
+  #print STDERR "exists=$exists\n";
+  #our $changelist_set = $SVN::_Core::svn_notify_changelist_set;
+  our $changelist_set = 26;
+  our $changelist_clear = $SVN::Wc::notify_changelist_clear;
+  our $changelist_moved = $SVN::Wc::notify_changelist_moved;
+  our $merge_begin  = $SVN::Wc::notify_merge_begin;
+  our $foreign_merge_begin = $SVN::Wc::notify_foreign_merge_begin;
+  our $update_replace = $SVN::Wc::notify_update_replace;
 }
 
 {
-  package SVN::_Core;
+  # this 2 line wierdness is needed to keep Module::Build from adding
+  # this package to the META.yaml provides list
+  package
+    SVN::_Core;
   # svn_cmdline.h says that encoding (at least for the command line)
   # defaults to APR_LOCALE_CHARSET, which Apache Portable Runtime
   # Library documentation says is 1, to indicate that the current
@@ -65,7 +87,10 @@ my $EXCEPTIONS = 'SVN::Friendly::Exceptions';
 
 # taken from svn_types.h
 {
-  package SVN::Depth;
+  # this 2 line wierdness is needed to keep Module::Build from adding
+  # this package to the META.yaml provides list
+  package
+    SVN::Depth;
 
   our $infinity = 3;
   our $empty = 0;
@@ -200,6 +225,7 @@ our %ACTIONS
 );
 
 
+#print STDERR $SVN::Core::VER_MINOR . "\n";
 if (1 <= $SVN::Core::VER_MAJOR) {
   if (5 <= $SVN::Core::VER_MINOR) {
     $ACTIONS{$SVN::Wc::Notify::Action::exists}
@@ -221,16 +247,16 @@ if (1 <= $SVN::Core::VER_MAJOR) {
   }
 
   if (6 <= $SVN::Core::VER_MINOR) {
-#      , $SVN::Wc::Notify::Action::property_added
-#      => 'schedule: add property'
-#      , $SVN::Wc::Notify::Action::property_modified
-#      => 'schedule: modify property'
-#      , $SVN::Wc::Notify::Action::property_deleted
-#      => 'schedule: delete property'
-#      , $SVN::Wc::Notify::Action::property_deleted_nonexistant
-#      => 'schedule: delete property'
-#      , $SVN::Wc::Notify::Action::merge_completed
-#      => 'merge: completed'
+      $ACTIONS{$SVN::Wc::Notify::Action::property_added}
+      = 'schedule: add property';
+      $ACTIONS{$SVN::Wc::Notify::Action::property_modified}
+      = 'schedule: modify property';
+      $ACTIONS{$SVN::Wc::Notify::Action::property_deleted}
+      = 'schedule: delete property';
+      $ACTIONS{$SVN::Wc::Notify::Action::property_deleted_nonexistant}
+      = 'schedule: delete property';
+      $ACTIONS{$SVN::Wc::Notify::Action::merge_completed}
+      = 'merge: completed';
   }
 }
 
@@ -687,8 +713,14 @@ sub commit1_1 {
   my $bNonRecursive        = _shiftBoolean(\@_);
   my $oPool                = $self->_shiftPool(\@_);
 
-  return SVN::_Client::svn_client_commit
+  # in the subversion bindings for 1.5, this method returns a
+  # svn_client_commit_info_t object with revision set to -1. In earlier
+  # releases of the subversion bindins it returned undef. To make the
+  # behavior consistent between releases we check the return value.
+
+  my $xResult = SVN::_Client::svn_client_commit
     ($aWcs, $bNonRecursive, $self->{ctx}, $oPool);
+  return ref($xResult) && ($xResult->revision >= 0) ? $xResult : undef;
 }
 
 sub commit1_4 {
@@ -745,8 +777,14 @@ sub commit {
   my $bRecurse             = _shiftRecurse(\@_);
   my $oPool                = $self->_shiftPool(\@_);
 
-  return SVN::_Client::svn_client_commit
-      ($aWcs, $bRecurse?0:1, $self->{ctx}, $oPool);
+  # in the subversion bindings for 1.5, this method returns a
+  # svn_client_commit_info_t object with revision set to -1. In earlier
+  # releases of the subversion bindins it returned undef. To make the
+  # behavior consistent between releases we check the return value.
+
+  my $xResult = SVN::_Client::svn_client_commit
+    ($aWcs, $bRecurse?0:1, $self->{ctx}, $oPool);
+  return ref($xResult) && ($xResult->revision >= 0) ? $xResult : undef;
 }
 
 #--------------------------------------------------------------------
@@ -861,7 +899,16 @@ sub configureLogMessage {
     }
   }
 
-  $self->{log_msg_wrapper} = $self->{ctx}->log_msg_baton($crWrapper);
+  # in subversion bindings for 1.4, the method availble is log_msg_baton
+  # subversion bindings for 1.5 appear to have changed the signature so
+  # that the second parameter is *void and it fails. We have to use
+  # log_msg_baton3 instead
+
+  $self->{log_msg_wrapper}
+    = (($SVN::Core::VER_MAJOR==1) && ($SVN::Core::VER_MINOR < 5))
+      ? $self->{ctx}->log_msg_baton($crWrapper)
+      : $self->{ctx}->log_msg_baton3($crWrapper);
+
   $self->{log_msg} = $crLogMsg;
   return $crLogMsg;
 }
@@ -1749,13 +1796,23 @@ sub list {
 sub merge1_1 {
   my $self                 = shift @_;
   my ($xTarget1, $xPeg1
-      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_);
+      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_, 1);
   my $sWc                  = _shiftWcPath(\@_);
   my $bRecurse             = _shiftRecurse(\@_);
   my $bIgnoreAncestry      = _shiftBoolean(\@_);
   my $bForce               = _shiftBoolean(\@_);
   my $bDryRun              = _shiftBoolean(\@_);
   my $oPool                = $self->_shiftPool(\@_);
+
+  #print STDERR "t1=<", $xTarget1, "> peg=<$xPeg1> status="
+  #  , $self->getStatusAsString($self->getStatus($xTarget1)->text_status())
+  #  , "\n";
+  #print STDERR "t2=<", $xTarget2, "> peg=<$xPeg2> status="
+  #  , $self->getStatusAsString($self->getStatus($xTarget2)->text_status())
+  #  , "\n";
+  #print STDERR "wc=<", $sWc, "> status="
+  #  , $self->getStatusAsString($self->getStatus($sWc)->text_status())
+  #  , "\n";
 
   return SVN::_Client::svn_client_merge
     ($xTarget1, $xPeg1, $xTarget2, $xPeg2, $sWc
@@ -1766,7 +1823,7 @@ sub merge1_1 {
 sub merge1_4 {
   my $self                 = shift @_;
   my ($xTarget1, $xPeg1
-      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_);
+      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_,1);
   my $sWc                  = _shiftWcPath(\@_);
   my $bRecurse             = _shiftRecurse(\@_);
   my $bIgnoreAncestry      = _shiftBoolean(\@_);
@@ -1792,7 +1849,7 @@ sub merge1_4 {
 sub merge1_5 {
   my $self                 = shift @_;
   my ($xTarget1, $xPeg1
-      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_);
+      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_,1);
   my $sWc                  = _shiftWcPath(\@_);
   my $iDepth               = _shiftDepth(\@_);
   my $bIgnoreAncestry      = _shiftBoolean(\@_);
@@ -1813,7 +1870,7 @@ sub merge1_5 {
 sub merge1_7 {
   my $self                 = shift @_;
   my ($xTarget1, $xPeg1
-      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_);
+      , $xTarget2, $xPeg2) = _shiftDiffTargets(\@_,1);
   my $sWc                  = _shiftWcPath(\@_);
   my $iDepth               = _shiftDepth(\@_);
   my $bIgnoreAncestry      = _shiftBoolean(\@_);
@@ -3007,14 +3064,14 @@ sub _shiftArray {
 #----------------------------------------------------------------
 
 sub _shiftDiffTargets($) {
-  my $aArgs = shift @_;
+  my ($aArgs, $bRepository) = @_;
   my $xTarget1 = shift @$aArgs;
   my $xPeg1 = shift  @$aArgs;
   my $xTarget2 = shift  @$aArgs;
   my $xPeg2 = shift  @$aArgs;
 
   if (defined($xTarget1)) {
-    $xTarget1 = "$xTarget1";
+    $xTarget1 = "$xTarget1";  #force use of "" override
   } else {
     $xTarget1 = File::Spec->curdir();
   }
@@ -3026,7 +3083,7 @@ sub _shiftDiffTargets($) {
     } elsif (defined($xPeg2)) {
       $xPeg1 = $xPeg2 unless defined($xPeg1);
     } else {
-      $xPeg1 = $xPeg2 = 'BASE';
+      $xPeg1 = $xPeg2 = ($bRepository ? 'HEAD' : 'BASE');
     }
   } elsif (defined($xPeg1)) {
     if (Scalar::Util::looks_like_number($xPeg1)) {
@@ -3034,7 +3091,7 @@ sub _shiftDiffTargets($) {
     } elsif ($xPeg1 eq 'PREV') {
       $xPeg2 = 'COMMITTED';
     } elsif ($xPeg1 =~ qr{BASE|HEAD|COMMITTED}) {
-      $xPeg2 = 'WORKING';
+      $xPeg2 = ($bRepository ? 'HEAD' : 'WORKING');
     } else {
       $xPeg2 = $xPeg1;
     }
@@ -3048,6 +3105,9 @@ sub _shiftDiffTargets($) {
     } else {
       $xPeg1 = $xPeg2;
     }
+  } elsif ($bRepository) {
+    $xPeg1 = 'PREV';
+    $xPeg2 = 'COMMITTED';
   } else {
     $xPeg1 = 'BASE';
     $xPeg2 = 'WORKING';

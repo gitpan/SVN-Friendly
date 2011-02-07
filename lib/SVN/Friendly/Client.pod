@@ -220,11 +220,10 @@ subversion see L</USAGE>.
 This class provides a user friendly front end to the Subversion
 bindings so you can develop subversion related applications
 without relying on the command line.  It provides a more
-user friendly alternative to the raw API exposed by
-L<SVN::Alien|SVN::Alien> and nearly raw API exposed by
-L<SVN::Client|SVN::Client>.  It provides full access to the
-functions of the raw API but does so in a way that integrates
-naturally with Perl programming styles.
+nearly raw API exposed by the Perl subversion bindings provided
+by L<SVN::Client|>.  Like those bindings, it provides full access
+to the functions of the raw API but does so in a way that integrates
+naturally with Perl programming styles and language features.
 
 As of Feb, 2011 the SVN modules available on CPAN provide only
 limited support for a user friendly CPAN interface. There is no
@@ -236,7 +235,7 @@ the Subversion API:
 
 =over
 
-=item encapsulating domain knowledge
+=item B<encapsulating domain knowledge>
 
 This manual page and the implementation of many of the functions
 (especially the choice of defaults) encapsulate knowledge about
@@ -246,7 +245,7 @@ and re-reading of the C-API documentation, L<Alien::SVN>
 documentation and even occasional dives into source code and
 SWIG bindings definition files.
 
-=item parameter defaults and optional trailing parameters.
+=item B<parameter defaults and optional trailing parameters>
 
 All methods have been defined so that trailing optional parameters
 can be omitted and intermediate undefined parameter have reasonable
@@ -277,7 +276,7 @@ C function complains about too few parameters.
      , $bUpdate, $bNoIgnore);
 
 
-=item provide log comments via method parameters
+=item B<provide log comments via method parameters>
 
 None of the C-API methods have a parameter where you can set the
 log message during a commit. Nor is there an easy alternative for
@@ -289,7 +288,7 @@ This class simplifies log comments by providing a log message
 parameter to any method with a standardize parameter order that
 is liable to commit data to the repository.
 
-=item consistent easy-to-remember parameter ordering
+=item B<consistent easy-to-remember parameter ordering>
 
 A standard ordering of parameters is very important to making this
 API usable because there are many, many methods and parameter lists
@@ -308,7 +307,7 @@ two sets of methods:
 * all other methods follow an easy to remember standardized
   parameter ordering discussed in L</Order of parameters>.
 
-=item consistant naming of methods belonging to later APIs
+=item B<consistant naming of methods belonging to later APIs>
 
 The C<SVN::Friendly::Client|SVN::Friendly::Client> also standardizes
 the naming of methods belonging to each API version. This makes it
@@ -331,7 +330,7 @@ know what functions are compatible with a particular release of
 subversion, you always have to look at the documentation. You
 can't just look at the name.
 
-=item string representation of Subversion constants
+=item B<string representation of Subversion constants>
 
 To make it easy to debug and print out reports on the repository,
 stringified versions are provided for all enums and constants
@@ -343,11 +342,11 @@ In the raw C-API all you have are the numbers themselves and you
 must look up the meaning of the numbers and convert them to
 human readable strings on your own.
 
-=item simplified access to repository and working copy metadata
+=item B<simplified access to repository and working copy metadata>
 
-L<SVN::Friendly::Client|SVN::Friendly::Client> provides several C<getXXX>
-methods to access commonly needed informtion about repositories,
-working copies, and the paths within them.
+L<SVN::Friendly::Client|SVN::Friendly::Client> provides several
+C<getXXX> methods to access commonly needed informtion about
+repositories, working copies, and the paths within them.
 
 These methods typically begin with either "is" or "get".
 
@@ -359,7 +358,7 @@ value for a single path one needs to (a) define a variable
 callback to the method of interest (e.g. C<info>, C<status>, C<log>),
 and (d) return the value after the method completes
 
-=item automatic parameter type conversions
+=item B<automatic parameter type conversions>
 
 L<SVN:Friendly::Client> expands the types that can be used as
 parameters with API methods:
@@ -379,7 +378,7 @@ only arrays can be passed as array parameters. The parameters
 are usually passed directly to the C API so there is no opportunity
 for natural usage to autoconvert an object to a string.
 
-=item simplified configuration of the authentication process
+=item B<simplified configuration of the authentication process>
 
 The authentication process can be configured with a simple hash
 and brief keywords. See L</Authentication> for details.
@@ -390,7 +389,7 @@ authentication that way using
 C<SVN::Friendly::Client|SVN::Friendly::Client>
 but in most cases that shouldn't be necessary.
 
-=item simplified configuration of notifications
+=item B<simplified configuration of notifications>
 
 L<SVN::Friendly::Client> gives you two options for configuring
 Notifications: you can install a callback routine
@@ -407,15 +406,15 @@ If you were to use only the tools provided by the raw subversion
 Perl bindings, you would have no choice but to define the callback
 and switch statement in lieu of the hash.
 
-=item subclassable interface
+=item B<subclassable interface>
 
 C<SVN::Friendly::Client> may be subclassed. It will do the right thing
 and call methods on the parent interface with parameters in the
 correct locations.
 
-Due to the way L<SVN::Client|SVN::Client> presently (1.6.12 and
+Due to the way L<SVN::Client|> presently (1.6.12 and
 earlier)automates the conversion of the raw C-API to object methods,
-L<SVN::Client|SVN::Client> cannot be subclassed.  Even though the
+L<SVN::Client|> cannot be subclassed.  Even though the
 methods are inherited, parameters will not be passed in the correct
 order to the C-API.
 
@@ -795,8 +794,17 @@ data I<do> take a parameter.
 
 This callback is passed as a parameter to the constructor of the
 client context. It can also be set after the context object is
-created via the C<log_msg> method.
+created via the C<configureLogMsg> method.
 
+You can also use the raw subversion API to change the log message.However
+this is not recommended for two reasons.  First, you will lose the ability
+to pass commit messages via method calss.  This is implemented by wrapping
+your custom log_msg routine with a closure that populates the log message
+from the parameter list and then calls your custom routine.  A second
+reason is that the SWIG bindings between versions 1.4 and 1.5 broke
+backwards compatibility and the C<log_msg_baton> method from the 1.4 API
+causes parameter type errors in the 1.5 bindings.  C<configureLogMsg>
+insures that the right method is called for the right subversion release.
 
 =head3 Notifications
 
@@ -1554,12 +1562,23 @@ copy.  For additional documentation see
 Equivalent on the command line to C<svn commit>.
 
 This method uploads and commits scheduled changes to directory lists,
-file contents and properties to the central repository.  The return
-value depends on the subversion release:
+file contents and properties to the central repository.  C<commit>
+always returns C<svn_client_commit_info_t> if a commit occurs and
+C<undef> otherwise.
 
-* prior to 1.4, returns C<svn_client_commit_info_t>
+The behavior of the major_minor version methods depends on the release.
 
-* 1.4, 1.5 return C<svn_commit_info_t>
+* C<commit1_1> returns C<svn_client_commit_info_t> if
+  a commit occurs and C<undef> otherwise. B<Note:> in the raw subversion
+  1.5 bindings a failed commit returns C<svn_client_commit_info_t> in
+  lieu of C<undef>. This has the potential to break programs that were
+  originally written to use the 1.4 bindings or earlier.
+  C<SVN::Friendly> wishes to avoid breaking software so this method
+  I<always> returns C<undef> even when running with Perl bindings
+  generated for subversion 1.5
+
+* 1.4, 1.5 return C<svn_commit_info_t> in both cases of failure and
+  success.
 
 * 1.6 and beyond - no return value; a call-back is used instead so
   that the call can construct their own summary data from the
@@ -1575,6 +1594,8 @@ Both return objects have the following methods in common
 
 * C<< $oCommitInfo->date() >> - the server side date of the commit
 
+C<svn_commit_info_t> has two additional fields, one describing the nature
+of any error and another identifying the repository that recieved the commits.
 
 For additional documentation see
 
@@ -1980,6 +2001,30 @@ be committed immediately. If the target is a working copy path it
 will be scheduled for addition.  This command has no effect at all
 on the source of the copy.
 
+Between 1.4 and 1.5 this method changed behavior. All methods were affected
+including those belonging to the 1.1. and 1.4 API. The changes included
+
+=over
+
+=item *
+
+In 1.4 attempts to make a copy of a copy failed, if the
+first copy wasn't committed.  Starting in 1.5 you could make a copy
+of a copy before committing the first copy.
+
+=item *
+
+Starting with subversion 1.5 copied files and directories automatically get
+C<svn:mergeinfo> property.
+
+=item *
+
+Action notification changed to look more like update than add. In 1.4 there
+was an action notification for each file or directory added.  In 1.5 there
+appears to be one update for each changed directory and its parents.
+
+=back
+
 
 For more documentation see
 
@@ -2024,6 +2069,31 @@ copy. If the target is given as a repository path the change will
 be committed immediately. If the target is a working copy path the
 source file will be scheduled for deletion and the destination file
 will be scheduled for addition.
+
+Between 1.4 and 1.5 this method changed behavior. All methods were affected
+including those belonging to the 1.1. and 1.4 API. The changes included
+
+=over
+
+=item *
+
+In 1.4 attempts to move a moved dir failed, if the
+first move wasn't committed.  Starting in 1.5 you can move a move
+before committing the first copy.
+
+=item *
+
+Starting with subversion 1.5 moved files and directories automatically get
+C<svn:mergeinfo> property.
+
+=item *
+
+Action notification changed to look more like update than add. In 1.4 there
+was an action notification for each file or directory added.  In 1.5 there
+appears to be one update for each changed directory and its parents.
+
+=back
+
 
 For more documentation see
 
@@ -3529,21 +3599,37 @@ Due to some incompleteness in the SWIG bindings some of the
 subversion 1.4 API methods do not work properly: (have these been
 fixed in the newest set of SWIG bindings?)
 
-* C<commit1_4> - works, but returns an unusable object. The object's
-  package does not appear to have been imported into Perl
+=over
 
-* C<list1_4> - fails due to parameter mismatch. Visitor thunk does
+=item *
+
+C<commit1_4> - works, but returns an unusable object. The object's
+  package does not appear to have been imported into Perl, This bug
+  appears to have persisted in the Perl bindings released with
+  subversion 1.5.
+
+=item *
+
+C<list1_4> - fails due to parameter mismatch. Visitor thunk does
   not appear to be implemented
 
-* C<merge1_4> - fails if C<$aMergeOptions> is non-empty. Although
+=item *
+
+C<merge1_4> - fails if C<$aMergeOptions> is non-empty. Although
   it is expecting an apr_array_header_t const * parameter, it rejects
   a passed in Perl array.
 
-* C<status1_4> - fails due to parameter mismatch.  Visitor thunk does
+=item *
+
+C<status1_4> - fails due to parameter mismatch.  Visitor thunk does
   not appear to be implemented
 
-* C<update1_4> - fails due to parameter mismatch.  parameter 1 does
+=item *
+
+C<update1_4> - fails due to parameter mismatch.  parameter 1 does
   not appear to have been converted to a return value.
+
+=back
 
 =head1 TO DO/ROADMAP
 

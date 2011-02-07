@@ -25,6 +25,10 @@ my $IDX_SVN1_4  = 2;
 my $IDX_SVN1_7  = $IDX_SVN1_4 + 3;
 my $WC_LAST_IDX = $IDX_SVN1_4;
 
+sub isBeforeOrAtRelease {
+  return ($SVN::Core::VER_MAJOR <= $_[0]) && ($SVN::Core::VER_MINOR <= $_[1]);
+}
+
 # remote setting of properties is not supported before 1.7
 my $IDX_REMOTE_PROPSET = $IDX_SVN1_7;
 
@@ -107,6 +111,13 @@ my $NORMAL_STATUS
       , repos_text_status => $SVN::Wc::Status::none
       , repos_prop_status => $SVN::Wc::Status::none
     };
+
+# subversion 1.5 adds a svn:mergeinfo property to copied files
+my $NORMAL_COPY_STATUS = { %$NORMAL_STATUS };
+$NORMAL_COPY_STATUS->{prop_status} = $SVN::Wc::Status::normal
+  unless isBeforeOrAtRelease(1,4);
+
+
 my $NORMAL_LOCK_STATUS
   = { text_status => $SVN::Wc::Status::normal
       , prop_status => $SVN::Wc::Status::none
@@ -903,6 +914,7 @@ sub okCleanup {
 sub okCommit {
   my ($sName, $oClient, $aPaths, $aParams
       , $aExpectedStatus, $iRev, $aExpectedActions) = @_;
+  local $Test::Builder::Level = $Test::Builder::Level + 1;
 
   $aExpectedStatus = [ ($aExpectedStatus) x scalar(@$aPaths) ]
     if (ref($aExpectedStatus) eq 'HASH');
@@ -965,8 +977,8 @@ sub okCommit {
     SKIP:
     {
       if ($SKIP_SWIG_BUGS && ($i >= $IDX_SVN1_4)) {
-        my $sBug="commit: svn_commit_info_t package "
-          ."undefined in SWIG-Perl";
+        my $sBug= "commit: svn_commit_info_t package "
+          ."undefined in SWIG-Perl (1.4), revision method unknown (1.5)";
         $SWIG_BINDING_BUGS{$sBug}++;
         local $TODO = "SWIG binding bug: need to report\n\t$sBug";
         skip $sTest, 1;
@@ -999,6 +1011,7 @@ sub okCommit {
 sub okCopy {
   my ($sName, $oClient, $xFrom, $aTo, $sRelPath, $aParams
   , $aExpectedActions) = @_;
+  local $Test::Builder::Level = $Test::Builder::Level + 1;
 
   # $xFrom may be: $sPath
   #                [ $sPath, $xPeg, $xRev]
@@ -2066,7 +2079,13 @@ sub okNotifyActions(&$$;$) {
           };
       }
     } else {
-      $bOk=fail("$sTest: exception expected but none thrown");
+      my $sError = 'exception expected but none thrown';
+      $bOk=fail("$sTest: $sError");
+
+      # failure to throw an exception may mean that an operation will
+      # commit when it wasn't expected to, thereby throwing off the rev
+      # counts.
+      die $sError if ($bDieOnUnexpectedException);
     }
     return 1;
 
@@ -2096,6 +2115,7 @@ sub okNotifyActions(&$$;$) {
 sub okPropdel {
   my ($sName, $oClient, $aPaths, $aDelProps, $aParams
       , $hRemaining, $hExpectedStatus, $aExpectedActions) = @_;
+  local $Test::Builder::Level = $Test::Builder::Level + 1;
 
   $aExpectedActions=[] unless defined($aExpectedActions);
   my $bVerify = ref($aExpectedActions) eq 'ARRAY' ?1:0;
@@ -3557,12 +3577,8 @@ sub testWc {
      , \@aRepos, \@aRepoURLs, \@aMirrorURLs);
 
   # DEBUG - BEGIN
-  #$iRev = testWc_RepoPathOps($sName, $oClient, \@aRepoURLs, $iRev
-  #     , 'testRemoteOps');
-  #$iRev = testWc_ImportExport($sName, $oClient, \@aRepoURLs, $iRev
-  #  , 'import1', \@aWc, $oSandbox->makeChild('exportTest'));
-  #$iRev = testWc_PathOps($sName, $oClient, \@aWc, $iRev, 0
-  #   , 'A', 'B', \@aRepoURLs);
+  #$iRev = testWc_Branching($sName, $oClient, \@aRepos, $iRev
+  #   , \@aWc, 'trunk', 'branch1');
   #exit(1); #STOP_TESTING
   # DEBUG - END
 
@@ -3699,8 +3715,17 @@ sub testWc_Branching {
      => $NORMAL_STATUS, ++$iRev, $ADD_FILE_COMMIT_ACTIONS);
 
   # Merge should result in 2 files in the directory
+  my $aExpectedActions = isBeforeOrAtRelease(1,4)
+    ? [  ($SVN::Wc::Notify::Action::update_add) x 2
+         , @$MERGE_ACTIONS
+      ]
+    : [ $SVN::Wc::Notify::Action::merge_begin
+        , ($SVN::Wc::Notify::Action::update_add) x 2
+        , @$MERGE_ACTIONS
+      ];
+
   okMerge($sName, $oClient, [ $aTrunk ], [ $aBranch ], $aTrunk,[]
-     => [qw(Cow.sound Cat.sound)]);
+     => [qw(Cow.sound Cat.sound)], $aExpectedActions);
   return $iRev;
 }
 
@@ -4061,47 +4086,79 @@ sub testWc_PathOps {
   my $aCopies = okCopy($sName, $oClient, [$aPaths], $aWc
      , [$sCopyRelPath, $bFile],[]);
 
-  # copies of uncommitted adds are not allowed
-
-  okCopy("$sName - copy uncommitted add", $oClient, [$aCopies]
-     , $aWc, [ $sCopyRelPath2,$bFile ], [] => $SOME_STRING_EXCEPTION);
-
-  # the failed copy leaves the working copy in an inconsistent state
-  # we can't commit without cleanup
-
-  my @aRoots = map { $_->getRoot() } @$aWc;
-
-  okUpdate("$sName - failed copy w/o cleanup"
-     , $oClient, [\@aRoots], []
-     => $iRev, $SOME_STRING_EXCEPTION);
-  okCommit("$sName - failed copy w/o cleanup"
-     , $oClient, $aCopies, []
-     => $NORMAL_STATUS, undef, $SOME_STRING_EXCEPTION);
-
-  # after cleanup all is well
-  # Note: commit works before update too
-  okCleanup("$sName - after failed copy", $oClient, \@aRoots);
-
-  # one update_update for each changed directory and for each
-  # of its parents
-
-  $aExpectedActions = $bFile
+  my $aUpdateActions= $bFile
     ? $UPDATE_ACTIONS
     : [ $SVN::Wc::Notify::Action::update_update, @$UPDATE_ACTIONS ];
-  okUpdate("$sName - failed copy w/ cleanup", $oClient,[\@aRoots], []
-     => $iRev, $aExpectedActions);
-
-  # Note: one add for the copied dir and each of its members
-  # (X1/ X2/ X2.txt)
-
-  $aExpectedActions = $bFile
+  my $aCommitActions = $bFile
     ? $COPY_COMMIT_ACTIONS
     : [ ($SVN::Wc::Notify::Action::commit_added) x 3
        , @$COPY_COMMIT_ACTIONS];
 
-  okCommit("$sName - failed copy w/ cleanup", $oClient, $aCopies, []
-     => $NORMAL_STATUS, ++$iRev, $aExpectedActions);
+  my @aRoots = map { $_->getRoot() } @$aWc;
 
+  # Changes from 1.4 to 1.5
+  # * 1.5 allows copies of copies (it just adds them), 1.4 does not
+  # * 1.5 adds a svn:mergeinfo property on the copied file, 1.4 does not
+  # * 1.5 on copy has one add for each dir and parent (like update)
+  #   rather than one add for each path added, as in 1.4
+
+  if (isBeforeOrAtRelease(1,4)) {
+
+    # copies of uncommitted adds are not allowed
+    okCopy("$sName - copy uncommitted add", $oClient, [$aCopies]
+      , $aWc, [ $sCopyRelPath2,$bFile ], [] => $SOME_STRING_EXCEPTION);
+
+    # the failed copy leaves the working copy in an inconsistent state
+    # we can't commit without cleanup
+
+    okUpdate("$sName - failed copy w/o cleanup", $oClient, [\@aRoots], []
+       => $iRev, $SOME_STRING_EXCEPTION);
+    okCommit("$sName - failed copy w/o cleanup", $oClient, $aCopies, []
+       => $NORMAL_STATUS, undef, $SOME_STRING_EXCEPTION);
+
+    # after cleanup all is well
+    # Note: commit works before update too
+    okCleanup("$sName - after failed copy", $oClient, \@aRoots);
+
+    # one update_update for each changed directory and for each
+    # of its parents
+
+    $aExpectedActions = $aUpdateActions;
+    okUpdate("$sName - update - failed copy w/ cleanup"
+       , $oClient,[\@aRoots], []  => $iRev, $aExpectedActions);
+
+    # Note: one add for the copied dir and each of its members
+    # (X1/ X2/ X2.txt)
+
+    $aExpectedActions =  $bFile
+      ? $COPY_COMMIT_ACTIONS
+      : [ ($SVN::Wc::Notify::Action::commit_added) x 3
+          , @$COPY_COMMIT_ACTIONS];
+    okCommit("$sName - commit - failed copy w/ cleanup", $oClient, $aCopies, []
+       => $NORMAL_COPY_STATUS, ++$iRev, $aExpectedActions);
+
+  } else {
+
+    # one update_update for each changed directory and for each
+    # of its parents
+
+    $aExpectedActions = $aUpdateActions;
+    okUpdate("$sName - update after copy"
+       , $oClient,[\@aRoots], []  => $iRev, $aExpectedActions);
+
+    # Note: one add for dir and parent, like update
+
+    $aExpectedActions =  $bFile
+      ? $COPY_COMMIT_ACTIONS
+      : [ $SVN::Wc::Notify::Action::commit_added, @$COPY_COMMIT_ACTIONS];
+
+    okCommit("$sName - commit after copy", $oClient, $aCopies, []
+       => $NORMAL_COPY_STATUS, ++$iRev, $aExpectedActions);
+
+    my $hProperties = $oClient->getPathProperties($aCopies->[0]);
+    #printf STDERR "path=%s: props=%s\n", $aCopies->[0]
+    #   , "@{[map { $_.'='.$hProperties->{$_} } keys %$hProperties ]}";
+  }
 
   #-----------------------------------
   # test wc move
@@ -4123,39 +4180,54 @@ sub testWc_PathOps {
                       } (0..$#$aCopies) ];
 
 
-  # moves of uncommitted adds are not allowed
+  # changes from subversion 1.4 to 1.5
+  # - moves of uncommitted adds are allowed
 
-  okMove("$sName - move uncommitted move", $oClient, $aMoved
-     , $aWc, [ $sMoveRelPath2, $bFile ], []
-     => $SOME_STRING_EXCEPTION);
+  if (isBeforeOrAtRelease(1,4)) {
 
-  okUpdate("$sName - failed move w/o cleanup"
-     , $oClient, \@aRoots, []
-     => $iRev, $SOME_STRING_EXCEPTION);
-  okCommit("$sName - failed move w/o cleanup"
-     , $oClient, $aCommit, []
-     => $NORMAL_STATUS, undef, $SOME_STRING_EXCEPTION);
+    okMove("$sName - move uncommitted move", $oClient, $aMoved
+           , $aWc, [ $sMoveRelPath2, $bFile ], []
+           => $SOME_STRING_EXCEPTION);
 
-  # cleanup and all is well
-  # Note1: commit works after update too
+    okUpdate("$sName - failed move w/o cleanup"
+             , $oClient, \@aRoots, []
+             => $iRev, $SOME_STRING_EXCEPTION);
+    okCommit("$sName - failed move w/o cleanup"
+             , $oClient, $aCommit, []
+             => $NORMAL_COPY_STATUS, undef, $SOME_STRING_EXCEPTION);
 
-  okCleanup("$sName - after failed copy", $oClient, \@aRoots);
-  okCommit("$sName - failed move w/ cleanup", $oClient, $aCommit, []
-     => [$NOT_FOUND_STATUS, $NORMAL_STATUS], ++$iRev
-        , $MOVE_COMMIT_ACTIONS);
-  okUpdate("$sName - failed move w/ cleanup", $oClient,[\@aRoots], []
-     => $iRev, $UPDATE_ACTIONS);
+    # cleanup and all is well
+    # Note1: commit works after update too
+
+    okCleanup("$sName - after failed copy", $oClient, \@aRoots);
+    okCommit("$sName - failed move w/ cleanup", $oClient, $aCommit, []
+             => [$NOT_FOUND_STATUS, $NORMAL_COPY_STATUS], ++$iRev
+             , $MOVE_COMMIT_ACTIONS);
+    okUpdate("$sName - failed move w/ cleanup", $oClient,[\@aRoots], []
+             => $iRev, $UPDATE_ACTIONS);
+  } else {
+
+    okCommit("$sName - commit: move", $oClient, $aCommit, []
+             => [$NOT_FOUND_STATUS, $NORMAL_COPY_STATUS], ++$iRev
+             , $MOVE_COMMIT_ACTIONS);
+    okUpdate("$sName - update: move", $oClient,[\@aRoots], []
+             => $iRev, $UPDATE_ACTIONS);
+  }
 
 
   #-----------------------------------
   # test properties: add, set, delete
   #-----------------------------------
 
+  # 1.5 adds the svn:mergeinfo property to copy/moved paths
+  my $hRemaining = isBeforeOrAtRelease(1,4)
+    ? {} : { 'svn:mergeinfo' => '' };
+
   my $hProps ={a=>10,b=>20};
   my $aRevertActions = $bFile
      ? $REVERT_ACTIONS
      : [ (@$REVERT_ACTIONS) x 4 ];  # for (. X1/ X2/ X2.txt )
-  my $aCommitActions = $bFile
+  $aCommitActions = $bFile
      ? $MOD_COMMIT_ACTIONS
      : [ (@$MOD_COMMIT_ACTIONS) x 4 ];  # for (. X1/ X2/ X2.txt )
 
@@ -4166,7 +4238,7 @@ sub testWc_PathOps {
      => $MOD_PROP_STATUS);
 
   okRevert("$sName - revert add props", $oClient, $aMoved, []
-     => $NORMAL_STATUS, 1, $aRevertActions);
+     => $NORMAL_COPY_STATUS, 1, $aRevertActions);
 
   okPropset("$sName - redo add props", $oClient, $aMoved, $hProps, []
      => $MOD_PROP_STATUS);
@@ -4194,17 +4266,17 @@ sub testWc_PathOps {
 
   okPropdel("$sName - del props", $oClient, $aMoved
     , [ keys %$hProps ], []
-     => {}, $MOD_PROP_STATUS);
+     => $hRemaining, $MOD_PROP_STATUS);
 
   okRevert("$sName - revert del props", $oClient, $aMoved, []
      => $NORMAL_PROP_STATUS, 1, $aRevertActions);
 
   okPropdel("$sName - redo del props", $oClient, $aMoved
      , [ keys %$hProps ], []
-     => {}, $MOD_PROP_STATUS);
+     => $hRemaining, $MOD_PROP_STATUS);
 
   okCommit("$sName - commit del props", $oClient, $aMoved, []
-     => $NORMAL_STATUS, ++$iRev, $aCommitActions);
+     => $NORMAL_COPY_STATUS, ++$iRev, $aCommitActions);
 
   #-----------------------------------
   # test delete
@@ -4221,7 +4293,7 @@ sub testWc_PathOps {
      => $DEL_STATUS, $aDelActions);
 
   okRevert("$sName - revert delete moved dir", $oClient, $aMoved, []
-     => $NORMAL_STATUS, 1, $aRevertActions);
+     => $NORMAL_COPY_STATUS, 1, $aRevertActions);
 
   okDelete("$sName - redo delete moved dir", $oClient, $aMoved, []
      => $DEL_STATUS, $aDelActions);
@@ -4329,6 +4401,13 @@ sub _makeCall($$) {
 
 testDefaults();
 testClient_Local_NoAuth();
+
+# skip version specific tests
+SKIP: {
+  skip("Tests targetted at subversion 1.4, testing ".
+       $SVN::Core::VER_MAJOR.'.'.$SVN::Core::VER_MINOR, 112)
+    unless isBeforeOrAtRelease(1,4);
+}
 
 if ($NAG_REPORT_SWIG_BUGS && keys %SWIG_BINDING_BUGS) {
   my $sMsg="SWIG binding bugs found: need to report";

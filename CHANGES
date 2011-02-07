@@ -1,0 +1,20 @@
+Revision history for SVN-Friendly-0.999_002
+
+0.999_002 2011-02-07
+
+    - revised code syntax to remove bogus "provides" packages
+    - fixed bug: section name passed to visitor for visitSections was
+      undef
+    - fixed bug: choice of default peg revisions for merge
+    - work-around: backwards compatibility bug in SWIG log_msg
+      bindings
+    - work-around: added several 1.5 constants mising from SWIG
+      bindings
+    - removed some version specific expectations from test suite
+    - updated documentation to note differences in 1.4 and 1.5
+      behavior
+
+0.999_001 2011-02-05
+
+    - initial release
+

@@ -15,7 +15,7 @@ my $builder = Module::Build
          , requires => {'perl' => '>= 5.8.8', 'SVN::Repos' => '0', 'SVN::Wc' => '0', 'Exception::Lite' => '0', 'SVN::Client' => '0'}
 
          , dist_author => 'Elizabeth Grace Frank-Backman'
-         , dist_version => '0.999_001'
+         , dist_version => '0.999_002'
          , dist_abstract => 'user friendly front end to Subversion bindings'
          , create_makefile_pl => 'traditional'
 
